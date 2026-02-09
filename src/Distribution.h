@@ -4,6 +4,7 @@
 #include "Geometry.h"
 
 #include <vector>
+#include <array>
 
 class Distribution {
 public:
@@ -13,12 +14,15 @@ public:
     virtual void add_point(const Point& p) = 0;
 };
 
-class NormalDistribution : public Distribution {
-    using covariance = std::vector<std::vector<double>>;
+class NormalDistributionRandom : public Distribution {
+    using covariance = std::array<std::array<double, 2>, 2>;
     covariance cov;
+    Point mean;
+    std::vector<Point> points;
+    void calculate_covariance();
 public:
-    NormalDistribution(const covariance& cov);
-    NormalDistribution(std::vector<Point> samples);
+    NormalDistributionRandom(const covariance& cov, const Point& mean = {0, 0});
+    NormalDistributionRandom(std::vector<Point> points);
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
     void add_point(const Point& p) override;
