@@ -8,8 +8,13 @@ struct Point {
     double y;
 };
 
-struct Polygon {
+class Polygon {
+private:
+    bool ray_point_intersect(Point p, Point a, Point b) const;
+public:
     std::vector<Point> vertices;
+
+    bool contains(Point p) const;
 };
 
 #endif
