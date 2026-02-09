@@ -8,7 +8,7 @@
 
 class Distribution {
 public:
-    virtual ~Distribution() = 0;
+    virtual ~Distribution() = default;
     virtual Point sample() const = 0;
     virtual double integrate_probability(const Polygon& region) const = 0;
     virtual void add_point(Point p) = 0;

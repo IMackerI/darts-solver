@@ -10,10 +10,11 @@ struct Point {
 
 class Polygon {
 private:
+    std::vector<Point> vertices;
     bool ray_point_intersect(Point p, Point a, Point b) const;
 public:
-    std::vector<Point> vertices;
-
+    Polygon(std::vector<Point>&& vertices);
+    Polygon(const std::vector<Point>& vertices);
     bool contains(Point p) const;
 };
 

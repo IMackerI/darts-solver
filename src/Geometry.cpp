@@ -14,6 +14,9 @@ bool Polygon::ray_point_intersect(Point ray_origin, Point seg_start, Point seg_e
     return ray_origin.x <= x_intersect;
 }
 
+Polygon::Polygon(std::vector<Point>&& vertices) : vertices(std::move(vertices)) {}
+Polygon::Polygon(const std::vector<Point>& vertices) : vertices(vertices) {}
+
 bool Polygon::contains(Point p) const {
     size_t intersections = 0;
     for (size_t i = 0; i < vertices.size(); ++i) {
