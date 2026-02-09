@@ -15,17 +15,24 @@ public:
 };
 
 class NormalDistributionRandom : public Distribution {
+public:
     using covariance = std::array<std::array<double, 2>, 2>;
+private:
     covariance cov;
     Point mean;
     std::vector<Point> points;
+    size_t num_samples;
+
     void calculate_covariance();
 public:
-    NormalDistributionRandom(const covariance& cov, Point mean = {0, 0});
-    NormalDistributionRandom(std::vector<Point> points);
+    NormalDistributionRandom(const covariance& cov, Point mean = {0, 0}, size_t num_samples = 10000);
+    NormalDistributionRandom(std::vector<Point> points, size_t num_samples = 10000);
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
     void add_point(Point p) override;
+    void set_integration_precision(size_t num_samples) {
+        this->num_samples = num_samples;
+    }
 };
 
 class DiscreteDistribution : public Distribution {

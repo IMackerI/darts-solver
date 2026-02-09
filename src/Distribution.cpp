@@ -24,9 +24,9 @@ void NormalDistributionRandom::calculate_covariance() {
     cov[1][1] /= points.size();
 }
 
-NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Point mean) : cov(cov), mean(mean) {}
+NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Point mean, size_t num_samples) : cov(cov), mean(mean), num_samples(num_samples) {}
 
-NormalDistributionRandom::NormalDistributionRandom(std::vector<Point> points) : points(std::move(points)) {
+NormalDistributionRandom::NormalDistributionRandom(std::vector<Point> points, size_t num_samples) : points(std::move(points)), num_samples(num_samples) {
     calculate_covariance();
 }
 
@@ -48,7 +48,13 @@ Point NormalDistributionRandom::sample() const {
 }
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
-    
+    size_t count = 0;
+    for (size_t i = 0; i < num_samples; ++i) {
+        if (region.contains(sample())) {
+            count++;
+        }
+    }
+    return static_cast<double>(count) / num_samples;
 }
 
 void NormalDistributionRandom::add_point(Point p) {
@@ -57,15 +63,16 @@ void NormalDistributionRandom::add_point(Point p) {
 }
 
 DiscreteDistribution::DiscreteDistribution(size_t height_resolution, size_t width_resolution)
-    : height_resolution(),
-      width_resolution()
+    : height_resolution(height_resolution),
+      width_resolution(width_resolution)
 {
     
 }
 
 DiscreteDistribution::DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution, size_t width_resolution)
-    : height_resolution(),
-      width_resolution()
+    : points(points),
+      height_resolution(height_resolution),
+      width_resolution(width_resolution)
 {
     
 }
