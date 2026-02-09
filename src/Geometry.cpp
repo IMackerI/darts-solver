@@ -4,14 +4,14 @@ bool Polygon::ray_point_intersect(Point ray_origin, Point seg_start, Point seg_e
     if (seg_start.y > seg_end.y) {
         std::swap(seg_start, seg_end);
     }
-    if (ray_origin.y == seg_start.y && ray_origin.x <= seg_start.x) return true;
-    if (ray_origin.y == seg_end.y && ray_origin.x <= seg_end.x) return true;
     
-    if (ray_origin.y < seg_start.y || ray_origin.y > seg_end.y) return false;
+    // [) avoid double-counting
+    if (ray_origin.y < seg_start.y || ray_origin.y >= seg_end.y) return false;
 
     double t = (ray_origin.y - seg_start.y) / (seg_end.y - seg_start.y);
-    double x_intersect = seg_start.x * (1 - t) + seg_end.x * t;
-    return ray_origin.x <= x_intersect;
+    double x_intersect = seg_start.x + t * (seg_end.x - seg_start.x);
+    
+    return x_intersect >= ray_origin.x;
 }
 
 Polygon::Polygon(std::vector<Point>&& vertices) : vertices(std::move(vertices)) {}

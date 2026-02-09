@@ -10,6 +10,7 @@ FetchContent_MakeAvailable(googletest)
 
 add_executable(darts_tests
   test_distributions.cpp
+  test_geometry.cpp
 )
 
 target_link_libraries(darts_tests PRIVATE
