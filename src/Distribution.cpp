@@ -24,7 +24,7 @@ void NormalDistributionRandom::calculate_covariance() {
     cov[1][1] /= points.size();
 }
 
-NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, const Point& mean) : cov(cov), mean(mean) {}
+NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Point mean) : cov(cov), mean(mean) {}
 
 NormalDistributionRandom::NormalDistributionRandom(std::vector<Point> points) : points(std::move(points)) {
     calculate_covariance();
@@ -51,7 +51,7 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region) co
     
 }
 
-void NormalDistributionRandom::add_point(const Point& p) {
+void NormalDistributionRandom::add_point(Point p) {
     points.push_back(p);
     calculate_covariance();
 }
@@ -78,6 +78,6 @@ double DiscreteDistribution::integrate_probability(const Polygon& region) const 
     
 }
 
-void DiscreteDistribution::add_point(const Point& p) {
+void DiscreteDistribution::add_point(Point p) {
     
 }

@@ -14,7 +14,7 @@ public:
     Bed(const Polygon& shape);
     void import(std::istream &input);
 
-    bool inside(const Point& p) const;
+    bool inside(Point p) const;
     state after_hit(const state& original_state) const;
 };
 

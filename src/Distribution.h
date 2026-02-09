@@ -11,7 +11,7 @@ public:
     virtual ~Distribution() = 0;
     virtual Point sample() const = 0;
     virtual double integrate_probability(const Polygon& region) const = 0;
-    virtual void add_point(const Point& p) = 0;
+    virtual void add_point(Point p) = 0;
 };
 
 class NormalDistributionRandom : public Distribution {
@@ -21,11 +21,11 @@ class NormalDistributionRandom : public Distribution {
     std::vector<Point> points;
     void calculate_covariance();
 public:
-    NormalDistributionRandom(const covariance& cov, const Point& mean = {0, 0});
+    NormalDistributionRandom(const covariance& cov, Point mean = {0, 0});
     NormalDistributionRandom(std::vector<Point> points);
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
-    void add_point(const Point& p) override;
+    void add_point(Point p) override;
 };
 
 class DiscreteDistribution : public Distribution {
@@ -37,7 +37,7 @@ public:
     DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution = 200, size_t width_resolution = 200);
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
-    void add_point(const Point& p) override;
+    void add_point(Point p) override;
 };
 
 #endif
