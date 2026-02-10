@@ -1,4 +1,5 @@
 #include "Distribution.h"
+#include "Geometry.h"
 #include "Random.h"
 #include <random>
 
@@ -48,9 +49,13 @@ Point NormalDistributionRandom::sample() const {
 }
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
+    return integrate_probability(region, PointDifference{0, 0});
+}
+
+double NormalDistributionRandom::integrate_probability(const Polygon& region, PointDifference offset) const {
     size_t count = 0;
     for (size_t i = 0; i < num_samples; ++i) {
-        if (region.contains(sample())) {
+        if (region.contains(sample() + offset)) {
             count++;
         }
     }

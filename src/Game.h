@@ -11,15 +11,15 @@ class Target;
 
 class Game {
 public:
-    using state = unsigned int;
-    using state_diff = int;
+    using State = unsigned int;
+    using StateDifference = int;
 private:
     const Target& target;
     const Distribution& distribution;
     public:
     Game(const Target& target, const Distribution& distribution);
-    state throw_at_sample(Point p, state current_state) const;
-    std::vector<std::pair<state, double>> throw_at(Point p, state current_state) const;
+    State throw_at_sample(Point p, State current_state) const;
+    std::vector<std::pair<State, double>> throw_at(Point p, State current_state) const;
 };
 
 class Target {
@@ -32,7 +32,7 @@ public:
     void import(std::istream &input);
     void import(const std::string &filename);
 
-    Game::state_diff after_hit(Point p) const;
+    Game::StateDifference after_hit(Point p) const;
     const std::vector<Bed>& get_beds() const {
         return beds;
     }
@@ -40,13 +40,13 @@ public:
 
 class Target::Bed {
     Polygon shape;
-    Game::state_diff diff;
+    Game::StateDifference diff;
 public:
-    Bed(const Polygon& shape, Game::state_diff diff);
+    Bed(const Polygon& shape, Game::StateDifference diff);
     void import(std::istream &input);
 
     bool inside(Point p) const;
-    Game::state_diff after_hit() const;
+    Game::StateDifference after_hit() const;
     const Polygon& get_shape() const {
         return shape;
     }

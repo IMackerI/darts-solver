@@ -11,6 +11,7 @@ public:
     virtual ~Distribution() = default;
     virtual Point sample() const = 0;
     virtual double integrate_probability(const Polygon& region) const = 0;
+    virtual double integrate_probability(const Polygon& region, PointDifference offset) const = 0;
     virtual void add_point(Point p) = 0;
 };
 
@@ -29,6 +30,7 @@ public:
     NormalDistributionRandom(std::vector<Point> points, size_t num_samples = 10000);
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
+    double integrate_probability(const Polygon& region, PointDifference offset) const override;
     void add_point(Point p) override;
     void set_integration_precision(size_t num_samples) {
         this->num_samples = num_samples;
@@ -41,9 +43,14 @@ class DiscreteDistribution : public Distribution {
     std::vector<std::vector<double>> probability_grid;
 public:
     DiscreteDistribution(size_t height_resolution, size_t width_resolution);
-    DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution = 200, size_t width_resolution = 200);
+    DiscreteDistribution(
+        const std::vector<Point>& points,
+        size_t height_resolution = 200,
+        size_t width_resolution = 200
+    );
     Point sample() const override;
     double integrate_probability(const Polygon& region) const override;
+    double integrate_probability(const Polygon& region, PointDifference offset) const override;
     void add_point(Point p) override;
 };
 

@@ -3,10 +3,19 @@
 
 #include <vector>
 
+struct Point;
+
+using PointDifference = Point;
+
 struct Point {
     double x;
     double y;
+
+    Point operator+(PointDifference diff) const {
+        return Point{x + diff.x, y + diff.y};
+    }
 };
+
 
 class Polygon {
 private:
