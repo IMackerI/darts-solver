@@ -21,16 +21,19 @@ Game::State Game::throw_at_sample(Point p, State current_state) const {
 std::vector<std::pair<Game::State, double>> Game::throw_at(Point p, State current_state) const {
     std::map<Game::State, double> result;
 
+    double total_probability = 0;
     for (auto&& region : target.get_beds()) {
         double probability = distribution.integrate_probability(
             region.get_shape(),
             static_cast<PointDifference>(p)
         );
+        total_probability += probability;
         StateDifference diff = region.after_hit();
 
-        if (diff + current_state < 0) result[current_state] += probability;
+        if (diff + static_cast<StateDifference>(current_state) < 0) result[current_state] += probability;
         else result[current_state + diff] += probability;
     }
+    result[current_state] += 1 - total_probability;
 
     return std::vector<std::pair<Game::State, double>>(result.begin(), result.end());
 }

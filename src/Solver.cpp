@@ -35,11 +35,12 @@ Solver::Score Solver::expected_score(Game::State s, Point aim) {
 
     if (same_state_prob >= 1.0 - EPSILON) return INFINITE_SCORE;
     
-    expected /= (1.0 - same_state_prob);
+    expected = (expected + 1) / (1.0 - same_state_prob);
     return expected;
 }
 
 Solver::Score Solver::solve(Game::State s) {
+    if (s == 0) return 0;
     if (memoization.contains(s)) { return memoization[s]; }
 
     Solver::Score best_score = INFINITE_SCORE;
