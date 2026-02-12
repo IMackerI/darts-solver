@@ -11,6 +11,8 @@ struct Point {
     double x;
     double y;
 
+    explicit Point(double x = 0, double y = 0) : x(x), y(y) {}
+
     Point operator+(PointDifference diff) const {
         return Point{x + diff.x, y + diff.y};
     }
