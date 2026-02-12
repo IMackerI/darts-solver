@@ -16,14 +16,14 @@ private:
 
     const size_t NumSamples;
 
-    std::unordered_map<Game::State, Score> memoization;
+    std::unordered_map<Game::State, std::pair<Score, Point>> memoization;
     const Game& game;
 
     std::vector<Point> sample_aims() const;
 public:
     Solver(const Game& game, size_t num_samples = 10000) : NumSamples(num_samples), game(game) {};
     Score expected_score(Game::State s, Point aim);
-    Score solve(Game::State s);
+    std::pair<Score, Point> solve(Game::State s);
 };
 
 #endif

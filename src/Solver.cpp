@@ -30,7 +30,7 @@ Solver::Score Solver::expected_score(Game::State s, Point aim) {
             continue;
         }
         
-        expected += solve(state) * probability;
+        expected += solve(state).first * probability;
     }
 
     if (same_state_prob >= 1.0 - EPSILON) return INFINITE_SCORE;
@@ -39,16 +39,16 @@ Solver::Score Solver::expected_score(Game::State s, Point aim) {
     return expected;
 }
 
-Solver::Score Solver::solve(Game::State s) {
-    if (s == 0) return 0;
+std::pair<Solver::Score, Point> Solver::solve(Game::State s) {
+    if (s == 0) return {0, Point{0,0}};
     if (memoization.contains(s)) { return memoization[s]; }
 
-    Solver::Score best_score = INFINITE_SCORE;
+    std::pair<Solver::Score, Point> best_score = {INFINITE_SCORE, Point{0,0}};
 
     for (const auto& aim : sample_aims()) {
         Solver::Score score = expected_score(s, aim);
-        if (score < best_score) {
-            best_score = score;
+        if (score < best_score.first) {
+            best_score = {score, aim};
         }
     }
     return memoization[s] = best_score;
