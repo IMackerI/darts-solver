@@ -16,10 +16,15 @@ public:
 private:
     const Target& target;
     const Distribution& distribution;
-    public:
+    std::pair<Point, Point> target_bounds = {
+        Point{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
+        Point{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()}
+    };
+public:
     Game(const Target& target, const Distribution& distribution);
     State throw_at_sample(Point p, State current_state) const;
     std::vector<std::pair<State, double>> throw_at(Point p, State current_state) const;
+    std::pair<Point, Point> get_target_bounds() const;
 };
 
 class Target {
