@@ -30,7 +30,7 @@ int main() {
     try_avg_dist(&dist);
     Target target("target.out");
     Game game(target, dist);
-    Solver solver(game, 1000);
+    Solver solver(game, 10000);
 
     print_results(solver);
     return 0;

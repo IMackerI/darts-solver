@@ -9,11 +9,15 @@ std::vector<Vec2> Solver::sample_aims() const {
     std::vector<Vec2> aims;
     auto [min_point, max_point] = game.get_target_bounds();
 
-    std::uniform_real_distribution<double> x_dist(min_point.x, max_point.x);
-    std::uniform_real_distribution<double> y_dist(min_point.y, max_point.y);
+    size_t height_samples = static_cast<size_t>(std::sqrt(NumSamples));
+    size_t width_samples = NumSamples / height_samples;
 
-    for (size_t i = 0; i < NumSamples; ++i) {
-        aims.emplace_back(x_dist(random_engine), y_dist(random_engine));
+    for (size_t i = 0; i < width_samples; ++i) {
+        for (size_t j = 0; j < height_samples; ++j) {
+            double x = min_point.x + (max_point.x - min_point.x) * (i + 0.5) / width_samples;
+            double y = min_point.y + (max_point.y - min_point.y) * (j + 0.5) / height_samples;
+            aims.emplace_back(x, y);
+        }
     }
 
     return aims;

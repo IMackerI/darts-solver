@@ -115,13 +115,18 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region) co
 }
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region, Vec2 offset) const {
+    if (cache_contains(region, offset))
+        return cache_get(region, offset);
+    
     size_t count = 0;
     for (size_t i = 0; i < num_samples; ++i) {
         if (region.contains(sample() + offset)) {
             count++;
         }
     }
-    return static_cast<double>(count) / num_samples;
+    double probability = static_cast<double>(count) / num_samples;
+    const_cast<NormalDistributionRandom*>(this)->cache_set(region, offset, probability);
+    return probability;
 }
 
 
@@ -130,6 +135,9 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
 }
 
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region, Vec2 offset) const {
+    if (cache_contains(region, offset))
+        return cache_get(region, offset);
+
     const auto& verts = region.get_vertices();
     if (verts.size() < 3) return 0.0;
 
@@ -145,6 +153,6 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
             total += area * quad_w[q] * probability_density(p - offset);
         }
     }
-
+    const_cast<NormalDistributionQuadrature*>(this)->cache_set(region, offset, total);
     return total;
 }
