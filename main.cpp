@@ -26,10 +26,9 @@ void print_results(Solver &solver) {
 
 int main() {
     NormalDistributionRandom::covariance cov = {{{400, 0}, {0, 400}}};
-    NormalDistributionRandom dist(cov, Point{0, 0}, 1000);
+    NormalDistributionRandom dist(cov, Point{0, 0}, 100);
     try_avg_dist(dist);
-
-    Target target("target.txt");
+    Target target("target.out");
     Game game(target, dist);
     Solver solver(game, 100);
 

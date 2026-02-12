@@ -149,14 +149,14 @@ def write_target(beds, filename):
     with open(filename, "w") as f:
         f.write(f"{len(beds)}\n")
         for score, color, poly in beds:
-            f.write(f"{score} {color}\n")
+            f.write(f"{score} {len(poly)} {color}\n")
             coords = " ".join(f"{x:.6f} {y:.6f}" for x, y in poly)
-            f.write(f"{len(poly)} {coords}\n")
+            f.write(f"{coords}\n")
 
 
 def main():
     subdivisions = int(sys.argv[1]) if len(sys.argv) > 1 else 8
-    output = sys.argv[2] if len(sys.argv) > 2 else "target.txt"
+    output = sys.argv[2] if len(sys.argv) > 2 else "target.out"
     beds = generate_target(subdivisions)
     write_target(beds, output)
     print(f"Wrote {len(beds)} beds to {output}  (subdivisions={subdivisions})")
