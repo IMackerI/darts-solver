@@ -72,7 +72,7 @@ def draw_dartboard(ax):
     
     # Draw 20 sectors with alternating colors
     for i in range(20):
-        angle_start = 81 - i * 18  # Start from top (90 degrees) with 9 degree offset
+        angle_start = 99 - i * 18  # Start from top (90 degrees) with 9 degree offset
         angle_end = angle_start - 18
         
         # Determine if this sector should be dark or light
