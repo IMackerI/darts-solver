@@ -6,10 +6,10 @@
 
 #include <iostream>
 
-void try_avg_dist(NormalDistributionRandom dist) {
+void try_avg_dist(NormalDistribution* dist) {
     double avg_dist = 0;
     for (int i = 0; i < 1000; ++i) {
-        Vec2 p = dist.sample();
+        Vec2 p = dist->sample();
         avg_dist += std::sqrt(p.x * p.x + p.y * p.y);
     }
     avg_dist /= 1000;
@@ -25,9 +25,9 @@ void print_results(Solver &solver) {
 }
 
 int main() {
-    NormalDistributionRandom::covariance cov = {{{200, 0}, {0, 200}}};
-    NormalDistributionRandom dist(cov, Vec2{0, 0}, 1000);
-    try_avg_dist(dist);
+    NormalDistribution::covariance cov = {{{200, 0}, {0, 200}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    try_avg_dist(&dist);
     Target target("target.out");
     Game game(target, dist);
     Solver solver(game, 1000);

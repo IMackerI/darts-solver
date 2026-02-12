@@ -104,7 +104,11 @@ void NormalDistribution::add_point(Vec2 p) {
     calculate_covariance();
 }
 
+NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Vec2 mean, size_t num_samples)
+    : NormalDistribution(cov, mean), num_samples(num_samples) {}
 
+NormalDistributionRandom::NormalDistributionRandom(std::vector<Vec2> points, size_t num_samples)
+    : NormalDistribution(std::move(points)), num_samples(num_samples) {}
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
     return integrate_probability(region, Vec2{0, 0});

@@ -5,7 +5,7 @@
 typedef Vec2 P;
 
 TEST(SimpleRandomNormalDistribution, RegionProbability) {
-    NormalDistributionRandom::covariance cov = {{{1, 0}, {0, 1}}};
+    NormalDistribution::covariance cov = {{{1, 0}, {0, 1}}};
     NormalDistributionRandom dist(cov, P{0, 0}, 100000);
     Polygon region(std::vector<P>{P{0, 0}, P{1000, 0}, P{1000, 1000}, P{0, 1000}});
     EXPECT_NEAR(dist.integrate_probability(region), 0.25, 0.01);
@@ -18,7 +18,7 @@ TEST(SimpleRandomNormalDistribution, RegionProbability) {
 }
 
 TEST(SimpleRandomNormalDistribution, RegionComparison) {
-    NormalDistributionRandom::covariance cov = {{{1, 0.4}, {0.4, 2}}};
+    NormalDistribution::covariance cov = {{{1, 0.4}, {0.4, 2}}};
     NormalDistributionRandom dist(cov, P{10, 10}, 100000);
     Polygon region1(std::vector<P>{P{-10, -10}, P{-10, 10}, P{10, 10}, P{10, -10}});
     Polygon region2(std::vector<P>{P{-20, -20}, P{-20, 20}, P{20, 20}, P{20, -20}});
@@ -28,7 +28,7 @@ TEST(SimpleRandomNormalDistribution, RegionComparison) {
 }
 
 TEST(RandomNormalDistribution, GenerationAndSampling) {
-    NormalDistributionRandom::covariance cov = {{{1, 0.4}, {0.4, 2}}};
+    NormalDistribution::covariance cov = {{{1, 0.4}, {0.4, 2}}};
     NormalDistributionRandom dist(cov, P{10, 10}, 100000);
     std::vector<Vec2> points;
     for (int i = 0; i < 1000; ++i) {

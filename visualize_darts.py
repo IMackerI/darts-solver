@@ -13,9 +13,17 @@ import argparse
 def parse_results(filename):
     """Parse the results file and extract state, expected throws, and aim coordinates."""
     results = []
+    avg_distance = None
     with open(filename, 'r') as f:
         for line_num, line in enumerate(f, 1):
-            if line.startswith('State:'):
+            if line.startswith('Average distance from mean:'):
+                try:
+                    # Extract average distance
+                    avg_dist_start = line.find('Average distance from mean:') + 27
+                    avg_distance = float(line[avg_dist_start:].strip())
+                except Exception as e:
+                    print(f"Warning: Could not parse average distance on line {line_num}")
+            elif line.startswith('State:'):
                 try:
                     # Use regex or careful parsing to extract values
                     # Format: State: X, Expected throws to finish: Y, Best aim: (a, b)
@@ -51,7 +59,7 @@ def parse_results(filename):
                     print(f"Warning: Could not parse line {line_num}: {line.strip()}")
                     print(f"  Error: {e}")
                     continue
-    return results
+    return results, avg_distance
 
 
 def draw_dartboard(ax):
@@ -138,7 +146,7 @@ def draw_dartboard(ax):
     ax.tick_params(colors='white')
 
 
-def visualize_state(results, state_num):
+def visualize_state(results, state_num, avg_distance=None):
     """Visualize a specific state's optimal aim point."""
     fig, ax = plt.subplots(figsize=(10, 10), facecolor='#1a1a1a')
     
@@ -158,13 +166,21 @@ def visualize_state(results, state_num):
     
     # Plot the optimal aim point
     x, y = state_data['aim']
+    
+    # Draw average distance circle around the aim point if provided
+    if avg_distance is not None:
+        avg_circle = plt.Circle((x, y), avg_distance, facecolor='none', 
+                               edgecolor='#00ffff', linewidth=2, linestyle='--', 
+                               alpha=0.6, zorder=13, label=f'Avg. Distance: {avg_distance:.1f}mm')
+        ax.add_patch(avg_circle)
+    
     # Outer glow
-    ax.plot(x, y, 'o', color='#ffff00', markersize=25, alpha=0.3, zorder=13)
-    ax.plot(x, y, 'o', color='#ffff00', markersize=20, alpha=0.5, zorder=14)
+    ax.plot(x, y, 'o', color='#ffff00', markersize=25, alpha=0.3, zorder=14)
+    ax.plot(x, y, 'o', color='#ffff00', markersize=20, alpha=0.5, zorder=15)
     # Main marker
     ax.plot(x, y, 'o', color='#ffff00', markersize=15, markeredgecolor='#ff0000', 
-            markeredgewidth=2, label='Optimal Aim', zorder=15)
-    ax.plot(x, y, '+', color='#ff0000', markersize=25, markeredgewidth=3, zorder=16)
+            markeredgewidth=2, label='Optimal Aim', zorder=16)
+    ax.plot(x, y, '+', color='#ff0000', markersize=25, markeredgewidth=3, zorder=17)
     
     # Add crosshairs
     ax.axhline(y=y, color='#ffff00', linestyle='--', alpha=0.5, linewidth=1.5, zorder=13)
@@ -181,7 +197,7 @@ def visualize_state(results, state_num):
     plt.show()
 
 
-def visualize_all_states(results):
+def visualize_all_states(results, avg_distance=None):
     """Visualize all states' optimal aim points on one dartboard."""
     fig, ax = plt.subplots(figsize=(12, 12), facecolor='#1a1a1a')
     
@@ -196,6 +212,14 @@ def visualize_all_states(results):
         if r['state'] == 0:  # Skip state 0 (finished)
             continue
         x, y = r['aim']
+        
+        # Draw average distance circle around each aim point if provided
+        if avg_distance is not None:
+            avg_circle = plt.Circle((x, y), avg_distance, facecolor='none', 
+                                   edgecolor='#00ffff', linewidth=1, linestyle='--', 
+                                   alpha=0.2, zorder=12)
+            ax.add_patch(avg_circle)
+        
         ax.plot(x, y, 'o', markersize=6, alpha=0.8, color=colors[idx], 
                markeredgecolor='white', markeredgewidth=0.5, zorder=13)
     
@@ -214,7 +238,7 @@ def visualize_all_states(results):
     plt.show()
 
 
-def interactive_visualizer(results):
+def interactive_visualizer(results, avg_distance=None):
     """Interactive visualizer that allows cycling through states."""
     current_state = [1]  # Use list to allow modification in nested function
     
@@ -236,13 +260,21 @@ def interactive_visualizer(results):
         
         # Plot the optimal aim point
         x, y = state_data['aim']
+        
+        # Draw average distance circle around the aim point if provided
+        if avg_distance is not None:
+            avg_circle = plt.Circle((x, y), avg_distance, facecolor='none', 
+                                   edgecolor='#00ffff', linewidth=2, linestyle='--', 
+                                   alpha=0.6, zorder=13, label=f'Avg. Distance: {avg_distance:.1f}mm')
+            ax.add_patch(avg_circle)
+        
         # Outer glow
-        ax.plot(x, y, 'o', color='#ffff00', markersize=25, alpha=0.3, zorder=13)
-        ax.plot(x, y, 'o', color='#ffff00', markersize=20, alpha=0.5, zorder=14)
+        ax.plot(x, y, 'o', color='#ffff00', markersize=25, alpha=0.3, zorder=14)
+        ax.plot(x, y, 'o', color='#ffff00', markersize=20, alpha=0.5, zorder=15)
         # Main marker
         ax.plot(x, y, 'o', color='#ffff00', markersize=15, markeredgecolor='#ff0000', 
-                markeredgewidth=2, label='Optimal Aim', zorder=15)
-        ax.plot(x, y, '+', color='#ff0000', markersize=25, markeredgewidth=3, zorder=16)
+                markeredgewidth=2, label='Optimal Aim', zorder=16)
+        ax.plot(x, y, '+', color='#ff0000', markersize=25, markeredgewidth=3, zorder=17)
         
         # Add crosshairs
         ax.axhline(y=y, color='#ffff00', linestyle='--', alpha=0.5, linewidth=1.5, zorder=13)
@@ -292,8 +324,10 @@ def main():
     
     # Parse results
     try:
-        results = parse_results(args.file)
+        results, avg_distance = parse_results(args.file)
         print(f"Loaded {len(results)} states from {args.file}")
+        if avg_distance is not None:
+            print(f"Average distance from mean: {avg_distance:.2f}mm")
     except FileNotFoundError:
         print(f"Error: File '{args.file}' not found.")
         return
@@ -303,15 +337,15 @@ def main():
     
     # Choose visualization mode
     if args.all:
-        visualize_all_states(results)
+        visualize_all_states(results, avg_distance)
     elif args.interactive:
-        interactive_visualizer(results)
+        interactive_visualizer(results, avg_distance)
     elif args.state is not None:
-        visualize_state(results, args.state)
+        visualize_state(results, args.state, avg_distance)
     else:
         # Default to interactive mode
         print("Starting interactive mode (use --help for options)")
-        interactive_visualizer(results)
+        interactive_visualizer(results, avg_distance)
 
 
 if __name__ == '__main__':
