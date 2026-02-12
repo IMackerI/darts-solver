@@ -1,6 +1,8 @@
 #include "Game.h"
 #include "Geometry.h"
 #include <csignal>
+#include <fstream>
+#include <stdexcept>
 #include <vector>
 #include <utility>
 #include <map>
@@ -46,6 +48,14 @@ Game::StateDifference Target::Bed::after_hit() const {
 
 Target::Target(const std::vector<Bed>& beds) : beds(beds) {}
 
+Target::Target(std::istream &input) {
+    import(input);
+}
+
+Target::Target(const std::string &filename) {
+    import(filename);
+}
+
 Game::StateDifference Target::after_hit(Point p) const {
     for (const auto& bed : beds) {
         if (bed.inside(p)) {
@@ -56,13 +66,33 @@ Game::StateDifference Target::after_hit(Point p) const {
 }
 
 void Target::Bed::import(std::istream &input) {
-    
+    int score;
+    input >> score;
+    diff = -score;
+
+    int num_points;
+    input >> num_points;
+    std::vector<Point> vertices(num_points);
+    for (int i = 0; i < num_points; ++i) {
+        input >> vertices[i].x >> vertices[i].y;
+    }
+    shape.set_vertices(std::move(vertices));
 }
 
 void Target::import(std::istream &input) {
-    
+    int num_beds;
+    input >> num_beds;
+    beds.clear();
+    beds.resize(num_beds);
+    for (int i = 0; i < num_beds; ++i) {
+        beds[i].import(input);
+    }
 }
 
 void Target::import(const std::string &filename) {
-    
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        throw std::runtime_error("Cannot open target file: " + filename);
+    }
+    import(file);
 }

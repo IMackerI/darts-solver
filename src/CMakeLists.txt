@@ -1,7 +1,7 @@
 # Library with core logic
 add_library(darts_core STATIC
   Geometry.cpp
-  Target.cpp
+  Game.cpp
   Distribution.cpp
   Solver.cpp
 )
