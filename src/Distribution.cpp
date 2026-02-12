@@ -1,11 +1,12 @@
 #include "Distribution.h"
 #include "Geometry.h"
 #include "Random.h"
+#include <cmath>
 #include <random>
 
 
 
-void NormalDistributionRandom::calculate_covariance() {
+void NormalDistribution::calculate_covariance() {
     mean = Point{0, 0};
     cov = {{{0, 0}, {0, 0}}};
 
@@ -28,13 +29,13 @@ void NormalDistributionRandom::calculate_covariance() {
     cov[1][1] /= points.size();
 }
 
-NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Point mean, size_t num_samples) : cov(cov), mean(mean), num_samples(num_samples) {}
+NormalDistribution::NormalDistribution(const covariance& cov, Point mean) : cov(cov), mean(mean) {}
 
-NormalDistributionRandom::NormalDistributionRandom(std::vector<Point> points, size_t num_samples) : points(std::move(points)), num_samples(num_samples) {
+NormalDistribution::NormalDistribution(std::vector<Point> points) : Distribution(std::move(points)) {
     calculate_covariance();
 }
 
-Point NormalDistributionRandom::sample() const {
+Point NormalDistribution::sample() const {
     std::normal_distribution<double> nd(0, 1);
     double z1 = nd(random_engine);
     double z2 = nd(random_engine);
@@ -51,6 +52,13 @@ Point NormalDistributionRandom::sample() const {
     };
 }
 
+void NormalDistribution::add_point(Point p) {
+    points.push_back(p);
+    calculate_covariance();
+}
+
+
+
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
     return integrate_probability(region, PointDifference{0, 0});
 }
@@ -64,37 +72,10 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region, Po
     }
     return static_cast<double>(count) / num_samples;
 }
-
-void NormalDistributionRandom::add_point(Point p) {
-    points.push_back(p);
-    calculate_covariance();
+double NormalDistributionQuadrature::integrate_probability(const Polygon& region) const {
+    
 }
 
-// DiscreteDistribution::DiscreteDistribution(size_t height_resolution, size_t width_resolution)
-//     : height_resolution(height_resolution),
-//       width_resolution(width_resolution)
-// {
+double NormalDistributionQuadrature::integrate_probability(const Polygon& region, PointDifference offset) const {
     
-// }
-
-// DiscreteDistribution::DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution, size_t width_resolution)
-//     : points(points),
-//       height_resolution(height_resolution),
-//       width_resolution(width_resolution)
-// {
-    
-// }
-
-// Point DiscreteDistribution::sample() const {
-    
-// }
-
-// double DiscreteDistribution::integrate_probability(const Polygon& region) const {
-    
-// }
-
-// double DiscreteDistribution::integrate_probability(const Polygon& region, PointDifference offset) const { }
-
-// void DiscreteDistribution::add_point(Point p) {
-    
-// }
+}
