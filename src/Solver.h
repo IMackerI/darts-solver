@@ -1,7 +1,6 @@
 #ifndef SOLVER_HEADER
 #define SOLVER_HEADER
 
-#include "Distribution.h"
 #include "Geometry.h"
 #include "Game.h"
 

@@ -70,31 +70,31 @@ void NormalDistributionRandom::add_point(Point p) {
     calculate_covariance();
 }
 
-DiscreteDistribution::DiscreteDistribution(size_t height_resolution, size_t width_resolution)
-    : height_resolution(height_resolution),
-      width_resolution(width_resolution)
-{
+// DiscreteDistribution::DiscreteDistribution(size_t height_resolution, size_t width_resolution)
+//     : height_resolution(height_resolution),
+//       width_resolution(width_resolution)
+// {
     
-}
+// }
 
-DiscreteDistribution::DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution, size_t width_resolution)
-    : points(points),
-      height_resolution(height_resolution),
-      width_resolution(width_resolution)
-{
+// DiscreteDistribution::DiscreteDistribution(const std::vector<Point>& points, size_t height_resolution, size_t width_resolution)
+//     : points(points),
+//       height_resolution(height_resolution),
+//       width_resolution(width_resolution)
+// {
     
-}
+// }
 
-Point DiscreteDistribution::sample() const {
+// Point DiscreteDistribution::sample() const {
     
-}
+// }
 
-double DiscreteDistribution::integrate_probability(const Polygon& region) const {
+// double DiscreteDistribution::integrate_probability(const Polygon& region) const {
     
-}
+// }
 
-double DiscreteDistribution::integrate_probability(const Polygon& region, PointDifference offset) const { }
+// double DiscreteDistribution::integrate_probability(const Polygon& region, PointDifference offset) const { }
 
-void DiscreteDistribution::add_point(Point p) {
+// void DiscreteDistribution::add_point(Point p) {
     
-}
+// }

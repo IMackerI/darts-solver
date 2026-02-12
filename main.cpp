@@ -2,7 +2,7 @@
 #include "Solver.h"
 #include "src/Distribution.h"
 #include "src/Geometry.h"
-#include "src/Random.h"
+#include <math.h>
 
 #include <iostream>
 

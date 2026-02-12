@@ -37,21 +37,21 @@ public:
     }
 };
 
-class DiscreteDistribution : public Distribution {
-    std::vector<Point> points;
-    const size_t height_resolution, width_resolution;
-    std::vector<std::vector<double>> probability_grid;
-public:
-    DiscreteDistribution(size_t height_resolution, size_t width_resolution);
-    DiscreteDistribution(
-        const std::vector<Point>& points,
-        size_t height_resolution = 200,
-        size_t width_resolution = 200
-    );
-    Point sample() const override;
-    double integrate_probability(const Polygon& region) const override;
-    double integrate_probability(const Polygon& region, PointDifference offset) const override;
-    void add_point(Point p) override;
-};
+// class DiscreteDistribution : public Distribution {
+//     std::vector<Point> points;
+//     const size_t height_resolution, width_resolution;
+//     std::vector<std::vector<double>> probability_grid;
+// public:
+//     DiscreteDistribution(size_t height_resolution, size_t width_resolution);
+//     DiscreteDistribution(
+//         const std::vector<Point>& points,
+//         size_t height_resolution = 200,
+//         size_t width_resolution = 200
+//     );
+//     Point sample() const override;
+//     double integrate_probability(const Polygon& region) const override;
+//     double integrate_probability(const Polygon& region, PointDifference offset) const override;
+//     void add_point(Point p) override;
+// };
 
 #endif

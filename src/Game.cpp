@@ -1,6 +1,5 @@
 #include "Game.h"
 #include "Geometry.h"
-#include <csignal>
 #include <fstream>
 #include <stdexcept>
 #include <vector>
@@ -14,7 +13,7 @@ Game::State Game::throw_at_sample(Point p, State current_state) const {
     Point sample = distribution.sample() + static_cast<PointDifference>(p);
     StateDifference diff = target.after_hit(sample);
 
-    if (diff + current_state < 0) return current_state;
+    if (diff + static_cast<StateDifference>(current_state) < 0) return current_state;
     else return current_state + diff;
 }
 
