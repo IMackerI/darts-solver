@@ -2,6 +2,7 @@
 #include "Geometry.h"
 #include <fstream>
 #include <stdexcept>
+#include <string>
 #include <vector>
 #include <utility>
 #include <map>
@@ -95,6 +96,8 @@ void Target::Bed::import(std::istream &input) {
 
     int num_points;
     input >> num_points;
+    std::string _;
+    input >> _; // ignore color
     std::vector<Point> vertices(num_points);
     for (int i = 0; i < num_points; ++i) {
         input >> vertices[i].x >> vertices[i].y;

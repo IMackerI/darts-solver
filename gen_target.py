@@ -31,6 +31,11 @@ NUMBERS = [20, 1, 18, 4, 13, 6, 10, 15, 2, 17,
 
 SECTOR_ANGLE = math.radians(18)  # each sector spans 18 degrees
 
+# Dartboard colors
+COLOR_RED = "#DC143C"
+COLOR_GREEN = "#228B22"
+COLOR_BLACK = "#000000"
+COLOR_CREAM = "#F5F5DC"
 
 def arc_points(radius, angle_start, angle_end, subdivisions):
     """Generate points along an arc from angle_start to angle_end (CCW)."""
@@ -82,8 +87,7 @@ def generate_target(subdivisions=8):
 
     # --- Bullseyes (full discs / annulus) ---
     # Inner bull (Double Bull) = 50 points
-    beds.append((50, disc_polygon(INNER_BULL_RADIUS, subdivisions * 20)))
-
+    beds.append((50, COLOR_RED, disc_polygon(INNER_BULL_RADIUS, subdivisions * 20)))
     # Outer bull (Single Bull) = 25 points
     for i, number in enumerate(NUMBERS):
         center_angle = math.radians(90) - i * SECTOR_ANGLE
@@ -93,7 +97,7 @@ def generate_target(subdivisions=8):
             INNER_BULL_RADIUS, OUTER_BULL_RADIUS,
             a_start, a_end, subdivisions
         )
-        beds.append((25, poly))
+        beds.append((25, COLOR_GREEN, poly))
 
     # --- Numbered sectors ---
     for i, number in enumerate(NUMBERS):
@@ -101,9 +105,14 @@ def generate_target(subdivisions=8):
         a_start = center_angle - SECTOR_ANGLE / 2
         a_end = center_angle + SECTOR_ANGLE / 2
 
+        # Alternate colors for sectors
+        sector_color = COLOR_BLACK if i % 2 == 0 else COLOR_CREAM
+        special_color = COLOR_RED if i % 2 == 0 else COLOR_GREEN
+
         # Inner single  (outer_bull_radius .. treble_inner_radius)
         beds.append((
             number,
+            sector_color,
             ring_sector_polygon(OUTER_BULL_RADIUS, TREBLE_INNER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -111,6 +120,7 @@ def generate_target(subdivisions=8):
         # Treble ring  (treble_inner .. treble_outer)  => 3x
         beds.append((
             3 * number,
+            special_color,
             ring_sector_polygon(TREBLE_INNER_RADIUS, TREBLE_OUTER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -118,13 +128,16 @@ def generate_target(subdivisions=8):
         # Outer single  (treble_outer .. double_inner)
         beds.append((
             number,
+            sector_color,
             ring_sector_polygon(TREBLE_OUTER_RADIUS, DOUBLE_INNER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
 
+    
         # Double ring  (double_inner .. double_outer)  => 2x
         beds.append((
             2 * number,
+            special_color,
             ring_sector_polygon(DOUBLE_INNER_RADIUS, DOUBLE_OUTER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -135,8 +148,8 @@ def generate_target(subdivisions=8):
 def write_target(beds, filename):
     with open(filename, "w") as f:
         f.write(f"{len(beds)}\n")
-        for score, poly in beds:
-            f.write(f"{score}\n")
+        for score, color, poly in beds:
+            f.write(f"{score} {color}\n")
             coords = " ".join(f"{x:.6f} {y:.6f}" for x, y in poly)
             f.write(f"{len(poly)} {coords}\n")
 
