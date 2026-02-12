@@ -90,6 +90,8 @@ double DiscreteDistribution::integrate_probability(const Polygon& region) const 
     
 }
 
+double DiscreteDistribution::integrate_probability(const Polygon& region, PointDifference offset) const { }
+
 void DiscreteDistribution::add_point(Point p) {
     
 }

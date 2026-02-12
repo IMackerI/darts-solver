@@ -1,5 +1,5 @@
-#ifndef TARGET_HEADER
-#define TARGET_HEADER
+#ifndef GAME_HEADER
+#define GAME_HEADER
 
 #include "Distribution.h"
 #include "Geometry.h"
@@ -28,7 +28,10 @@ class Target {
     std::vector<Bed> beds;
     static constexpr int MISS_STATE_DIFF = 0;
 public:
+    Target() = default;
     Target(const std::vector<Bed>& beds);
+    explicit Target(std::istream &input);
+    explicit Target(const std::string &filename);
     void import(std::istream &input);
     void import(const std::string &filename);
 
@@ -40,8 +43,9 @@ public:
 
 class Target::Bed {
     Polygon shape;
-    Game::StateDifference diff;
+    Game::StateDifference diff = 0;
 public:
+    Bed() = default;
     Bed(const Polygon& shape, Game::StateDifference diff);
     void import(std::istream &input);
 

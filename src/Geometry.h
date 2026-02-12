@@ -22,9 +22,12 @@ private:
     std::vector<Point> vertices;
     bool ray_point_intersect(Point p, Point a, Point b) const;
 public:
+    Polygon() = default;
     Polygon(std::vector<Point>&& vertices);
     Polygon(const std::vector<Point>& vertices);
     bool contains(Point p) const;
+    const std::vector<Point>& get_vertices() const { return vertices; }
+    void set_vertices(std::vector<Point>&& v) { vertices = std::move(v); }
 };
 
 #endif

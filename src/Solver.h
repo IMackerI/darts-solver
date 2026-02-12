@@ -3,18 +3,21 @@
 
 #include "Distribution.h"
 #include "Geometry.h"
-#include "Target.h"
+#include "Game.h"
 
 #include <vector>
 #include <unordered_map>
 
 class Solver {
-    std::unordered_map<state, score> memoization;
+public:
+    using Score = double;
+private:
+    std::unordered_map<Game::State, Score> memoization;
     const Distribution& distribution;
 public:
     Solver(const Distribution& distribution);
-    score expected_score(state s, Point aim);
-    score solve(state s);
+    Score expected_score(Game::State s, Point aim);
+    Score solve(Game::State s);
 };
 
 #endif
