@@ -5,7 +5,6 @@
 #include <random>
 
 
-
 void NormalDistribution::calculate_covariance() {
     mean = Point{0, 0};
     cov = {{{0, 0}, {0, 0}}};
@@ -29,10 +28,30 @@ void NormalDistribution::calculate_covariance() {
     cov[1][1] /= points.size();
 }
 
+double NormalDistribution::cov_determinant() const {
+    return cov[0][0] * cov[1][1] - cov[0][1] * cov[1][0];
+}
+
+NormalDistribution::covariance NormalDistribution::cov_inverse() const {
+    double det = cov_determinant();
+    return {{{cov[1][1] / det, -cov[0][1] / det}, {-cov[1][0] / det, cov[0][0] / det}}};
+}
+
 NormalDistribution::NormalDistribution(const covariance& cov, Point mean) : cov(cov), mean(mean) {}
 
 NormalDistribution::NormalDistribution(std::vector<Point> points) : Distribution(std::move(points)) {
     calculate_covariance();
+}
+
+double NormalDistribution::probability_density(Point p) const {
+    double c = 1.0 / (2 * M_PI * std::sqrt(cov_determinant()));
+    PointDifference diff = p - mean;
+    covariance inv_cov = cov_inverse();
+    double exponent = -0.5 * (
+        diff.x * (inv_cov[0][0] * diff.x + inv_cov[0][1] * diff.y) +
+        diff.y * (inv_cov[1][0] * diff.x + inv_cov[1][1] * diff.y)
+    );
+    return c * std::exp(exponent);
 }
 
 Point NormalDistribution::sample() const {
@@ -72,6 +91,8 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region, Po
     }
     return static_cast<double>(count) / num_samples;
 }
+
+
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region) const {
     
 }

@@ -16,6 +16,9 @@ struct Point {
     Point operator+(PointDifference diff) const {
         return Point{x + diff.x, y + diff.y};
     }
+    Point operator-(PointDifference diff) const {
+        return Point{x - diff.x, y - diff.y};
+    }
 };
 
 

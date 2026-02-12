@@ -13,6 +13,7 @@ public:
     Distribution() = default;
     Distribution(std::vector<Point> points) : points(std::move(points)) {}
     virtual ~Distribution() = default;
+    virtual double probability_density(Point p) const = 0;
     virtual Point sample() const = 0;
     virtual double integrate_probability(const Polygon& region) const = 0;
     virtual double integrate_probability(const Polygon& region, PointDifference offset) const = 0;
@@ -27,10 +28,13 @@ protected:
     Point mean;
 
     void calculate_covariance();
+    double cov_determinant() const;
+    covariance cov_inverse() const;
 public:
     virtual ~NormalDistribution() = default;
     NormalDistribution(const covariance& cov, Point mean = Point{0, 0});
     NormalDistribution(std::vector<Point> points);
+    double probability_density(Point p) const override;
     Point sample() const override;
     virtual double integrate_probability(const Polygon& region) const override = 0;
     virtual double integrate_probability(const Polygon& region, PointDifference offset) const override = 0;
