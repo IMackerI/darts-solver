@@ -1,6 +1,7 @@
 #ifndef GEOMETRY_HEADER
 #define GEOMETRY_HEADER
 
+#include <cstdlib>
 #include <vector>
 
 struct Vec2 {
@@ -17,6 +18,13 @@ struct Vec2 {
     }
 };
 
+inline double det(const Vec2& a, const Vec2& b) {
+    return a.x * b.y - a.y * b.x;
+}
+
+inline double triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
+    return 0.5 * std::abs((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
+}
 
 class Polygon {
 private:

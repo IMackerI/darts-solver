@@ -4,6 +4,34 @@
 #include <cmath>
 #include <random>
 
+// Dunavant rule 5 (degree 5, 7 quadrature points) for unit reference triangle
+// (0,0)-(1,0)-(0,1). Expanded from compressed barycentric suborders [1,3,3].
+// Weights sum to 1.0 (normalized to reference triangle area).
+// Reference: Dunavant, "High Degree Efficient Symmetrical Gaussian Quadrature
+// Rules for the Triangle", IJNME Vol 21, 1985, pp. 1129-1148.
+static constexpr int QUAD_NPTS = 7;
+static constexpr double quad_r[QUAD_NPTS] = {
+    0.333333333333333,
+    0.059715871789770, 0.470142064105115, 0.470142064105115,
+    0.797426985353087, 0.101286507323456, 0.101286507323456
+};
+static constexpr double quad_s[QUAD_NPTS] = {
+    0.333333333333333,
+    0.470142064105115, 0.470142064105115, 0.059715871789770,
+    0.101286507323456, 0.101286507323456, 0.797426985353087
+};
+static constexpr double quad_w[QUAD_NPTS] = {
+    0.225000000000000,
+    0.132394152788506, 0.132394152788506, 0.132394152788506,
+    0.125939180544827, 0.125939180544827, 0.125939180544827
+};
+
+Vec2 ref_to_physical(Vec2 v0, Vec2 v1, Vec2 v2, double r, double s) {
+    return Vec2{
+        v0.x * (1.0 - r - s) + v1.x * r + v2.x * s,
+        v0.y * (1.0 - r - s) + v1.y * r + v2.y * s
+    };
+}
 
 void NormalDistribution::calculate_covariance() {
     mean = Vec2{0, 0};
@@ -94,9 +122,25 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region, Ve
 
 
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region) const {
-    
+    return integrate_probability(region, Vec2{0, 0});
 }
 
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region, Vec2 offset) const {
-    
+    const auto& verts = region.get_vertices();
+    if (verts.size() < 3) return 0.0;
+
+    double total = 0.0;
+
+    // Fan triangulation from vertex 0 (works for convex polygons)
+    for (size_t i = 1; i + 1 < verts.size(); ++i) {
+        Vec2 v0 = verts[0], v1 = verts[i], v2 = verts[i + 1];
+        double area = triangle_area(v0, v1, v2);
+
+        for (int q = 0; q < QUAD_NPTS; ++q) {
+            Vec2 p = ref_to_physical(v0, v1, v2, quad_r[q], quad_s[q]);
+            total += area * quad_w[q] * probability_density(p - offset);
+        }
+    }
+
+    return total;
 }

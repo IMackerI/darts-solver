@@ -11,7 +11,7 @@ Game::Game(const Target& target, const Distribution& distribution)
     : target(target), distribution(distribution) {}
 
 Game::State Game::throw_at_sample(Vec2 p, State current_state) const {
-    Vec2 sample = distribution.sample() + static_cast<Point>(p);
+    Vec2 sample = distribution.sample() + static_cast<Vec2>(p);
     StateDifference diff = target.after_hit(sample);
 
     if (diff + static_cast<StateDifference>(current_state) < 0) return current_state;
@@ -25,7 +25,7 @@ std::vector<std::pair<Game::State, double>> Game::throw_at(Vec2 p, State current
     for (auto&& region : target.get_beds()) {
         double probability = distribution.integrate_probability(
             region.get_shape(),
-            static_cast<Point>(p)
+            static_cast<Vec2>(p)
         );
         total_probability += probability;
         StateDifference diff = region.after_hit();
