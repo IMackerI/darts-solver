@@ -11,7 +11,7 @@ Game::Game(const Target& target, const Distribution& distribution)
     : target(target), distribution(distribution) {}
 
 Game::State Game::throw_at_sample(Point p, State current_state) const {
-    Point sample = distribution.sample();
+    Point sample = distribution.sample() + static_cast<PointDifference>(p);
     StateDifference diff = target.after_hit(sample);
 
     if (diff + current_state < 0) return current_state;
@@ -33,6 +33,27 @@ std::vector<std::pair<Game::State, double>> Game::throw_at(Point p, State curren
     }
 
     return std::vector<std::pair<Game::State, double>>(result.begin(), result.end());
+}
+
+std::pair<Point, Point> Game::get_target_bounds() const {
+    if (target_bounds.first.x != std::numeric_limits<double>::max()) {
+        return target_bounds;
+    }
+
+    for (const auto& bed : target.get_beds()) {
+        for (const auto& vertex : bed.get_shape().get_vertices()) {
+            if (vertex.x < target_bounds.first.x) 
+                const_cast<Point&>(target_bounds.first).x = vertex.x;
+            if (vertex.y < target_bounds.first.y) 
+                const_cast<Point&>(target_bounds.first).y = vertex.y;
+            if (vertex.x > target_bounds.second.x) 
+                const_cast<Point&>(target_bounds.second).x = vertex.x;
+            if (vertex.y > target_bounds.second.y) 
+                const_cast<Point&>(target_bounds.second).y = vertex.y;
+        }
+    }
+
+    return target_bounds;
 }
 
 Target::Bed::Bed(const Polygon& shape, Game::StateDifference diff) : shape(shape), diff(diff) {}

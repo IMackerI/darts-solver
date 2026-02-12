@@ -6,6 +6,9 @@
 
 
 void NormalDistributionRandom::calculate_covariance() {
+    mean = Point{0, 0};
+    cov = {{{0, 0}, {0, 0}}};
+
     for (const auto& p : points) {
         mean.x += p.x;
         mean.y += p.y;
