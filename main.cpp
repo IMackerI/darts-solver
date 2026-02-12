@@ -9,7 +9,7 @@
 void try_avg_dist(NormalDistributionRandom dist) {
     double avg_dist = 0;
     for (int i = 0; i < 1000; ++i) {
-        Point p = dist.sample();
+        Vec2 p = dist.sample();
         avg_dist += std::sqrt(p.x * p.x + p.y * p.y);
     }
     avg_dist /= 1000;
@@ -25,12 +25,12 @@ void print_results(Solver &solver) {
 }
 
 int main() {
-    NormalDistributionRandom::covariance cov = {{{400, 0}, {0, 400}}};
-    NormalDistributionRandom dist(cov, Point{0, 0}, 100);
+    NormalDistributionRandom::covariance cov = {{{200, 0}, {0, 200}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 1000);
     try_avg_dist(dist);
     Target target("target.out");
     Game game(target, dist);
-    Solver solver(game, 100);
+    Solver solver(game, 1000);
 
     print_results(solver);
     return 0;

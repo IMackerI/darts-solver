@@ -1,7 +1,7 @@
 #include <gtest/gtest.h>
 #include "Geometry.h"
 
-typedef Point P;
+typedef Vec2 P;
 
 TEST(Polygon, SimpleConvex) {
     // Unit square

@@ -8,16 +8,16 @@
 
 class Distribution {
 protected:
-    std::vector<Point> points;
+    std::vector<Vec2> points;
 public:
     Distribution() = default;
-    Distribution(std::vector<Point> points) : points(std::move(points)) {}
+    Distribution(std::vector<Vec2> points) : points(std::move(points)) {}
     virtual ~Distribution() = default;
-    virtual double probability_density(Point p) const = 0;
-    virtual Point sample() const = 0;
+    virtual double probability_density(Vec2 p) const = 0;
+    virtual Vec2 sample() const = 0;
     virtual double integrate_probability(const Polygon& region) const = 0;
-    virtual double integrate_probability(const Polygon& region, PointDifference offset) const = 0;
-    virtual void add_point(Point p) = 0;
+    virtual double integrate_probability(const Polygon& region, Vec2 offset) const = 0;
+    virtual void add_point(Vec2 p) = 0;
 };
 
 class NormalDistribution : public Distribution {
@@ -25,30 +25,30 @@ public:
     using covariance = std::array<std::array<double, 2>, 2>;
 protected:
     covariance cov;
-    Point mean;
+    Vec2 mean;
 
     void calculate_covariance();
     double cov_determinant() const;
     covariance cov_inverse() const;
 public:
     virtual ~NormalDistribution() = default;
-    NormalDistribution(const covariance& cov, Point mean = Point{0, 0});
-    NormalDistribution(std::vector<Point> points);
-    double probability_density(Point p) const override;
-    Point sample() const override;
+    NormalDistribution(const covariance& cov, Vec2 mean = Vec2{0, 0});
+    NormalDistribution(std::vector<Vec2> points);
+    double probability_density(Vec2 p) const override;
+    Vec2 sample() const override;
     virtual double integrate_probability(const Polygon& region) const override = 0;
-    virtual double integrate_probability(const Polygon& region, PointDifference offset) const override = 0;
-    void add_point(Point p) override;
+    virtual double integrate_probability(const Polygon& region, Vec2 offset) const override = 0;
+    void add_point(Vec2 p) override;
 };
 
 class NormalDistributionRandom final : public NormalDistribution {
 private:
     size_t num_samples;
 public:
-    NormalDistributionRandom(const covariance& cov, Point mean = Point{0, 0}, size_t num_samples = 10000);
-    NormalDistributionRandom(std::vector<Point> points, size_t num_samples = 1000);
+    NormalDistributionRandom(const covariance& cov, Vec2 mean = Vec2{0, 0}, size_t num_samples = 10000);
+    NormalDistributionRandom(std::vector<Vec2> points, size_t num_samples = 1000);
     double integrate_probability(const Polygon& region) const override;
-    double integrate_probability(const Polygon& region, PointDifference offset) const override;
+    double integrate_probability(const Polygon& region, Vec2 offset) const override;
     void set_integration_precision(size_t num_samples) {
         this->num_samples = num_samples;
     }
@@ -58,7 +58,7 @@ class NormalDistributionQuadrature final : public NormalDistribution {
     using NormalDistribution::NormalDistribution;
 public:
     double integrate_probability(const Polygon& region) const override;
-    double integrate_probability(const Polygon& region, PointDifference offset) const override;
+    double integrate_probability(const Polygon& region, Vec2 offset) const override;
 };
 
 // class DiscreteDistribution : public Distribution {
@@ -74,7 +74,7 @@ public:
 //     );
 //     Point sample() const override;
 //     double integrate_probability(const Polygon& region) const override;
-//     double integrate_probability(const Polygon& region, PointDifference offset) const override;
+//     double integrate_probability(const Polygon& region, Point offset) const override;
 //     void add_point(Point p) override;
 // };
 

@@ -2,7 +2,7 @@
 #include "Distribution.h"
 #include "Geometry.h"
 
-typedef Point P;
+typedef Vec2 P;
 
 TEST(SimpleRandomNormalDistribution, RegionProbability) {
     NormalDistributionRandom::covariance cov = {{{1, 0}, {0, 1}}};
@@ -30,7 +30,7 @@ TEST(SimpleRandomNormalDistribution, RegionComparison) {
 TEST(RandomNormalDistribution, GenerationAndSampling) {
     NormalDistributionRandom::covariance cov = {{{1, 0.4}, {0.4, 2}}};
     NormalDistributionRandom dist(cov, P{10, 10}, 100000);
-    std::vector<Point> points;
+    std::vector<Vec2> points;
     for (int i = 0; i < 1000; ++i) {
         points.push_back(dist.sample());
     }

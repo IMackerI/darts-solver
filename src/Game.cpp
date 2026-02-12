@@ -10,22 +10,22 @@
 Game::Game(const Target& target, const Distribution& distribution) 
     : target(target), distribution(distribution) {}
 
-Game::State Game::throw_at_sample(Point p, State current_state) const {
-    Point sample = distribution.sample() + static_cast<PointDifference>(p);
+Game::State Game::throw_at_sample(Vec2 p, State current_state) const {
+    Vec2 sample = distribution.sample() + static_cast<Point>(p);
     StateDifference diff = target.after_hit(sample);
 
     if (diff + static_cast<StateDifference>(current_state) < 0) return current_state;
     else return current_state + diff;
 }
 
-std::vector<std::pair<Game::State, double>> Game::throw_at(Point p, State current_state) const {
+std::vector<std::pair<Game::State, double>> Game::throw_at(Vec2 p, State current_state) const {
     std::map<Game::State, double> result;
 
     double total_probability = 0;
     for (auto&& region : target.get_beds()) {
         double probability = distribution.integrate_probability(
             region.get_shape(),
-            static_cast<PointDifference>(p)
+            static_cast<Point>(p)
         );
         total_probability += probability;
         StateDifference diff = region.after_hit();
@@ -38,7 +38,7 @@ std::vector<std::pair<Game::State, double>> Game::throw_at(Point p, State curren
     return std::vector<std::pair<Game::State, double>>(result.begin(), result.end());
 }
 
-std::pair<Point, Point> Game::get_target_bounds() const {
+std::pair<Vec2, Vec2> Game::get_target_bounds() const {
     if (target_bounds.first.x != std::numeric_limits<double>::max()) {
         return target_bounds;
     }
@@ -46,13 +46,13 @@ std::pair<Point, Point> Game::get_target_bounds() const {
     for (const auto& bed : target.get_beds()) {
         for (const auto& vertex : bed.get_shape().get_vertices()) {
             if (vertex.x < target_bounds.first.x) 
-                const_cast<Point&>(target_bounds.first).x = vertex.x;
+                const_cast<Vec2&>(target_bounds.first).x = vertex.x;
             if (vertex.y < target_bounds.first.y) 
-                const_cast<Point&>(target_bounds.first).y = vertex.y;
+                const_cast<Vec2&>(target_bounds.first).y = vertex.y;
             if (vertex.x > target_bounds.second.x) 
-                const_cast<Point&>(target_bounds.second).x = vertex.x;
+                const_cast<Vec2&>(target_bounds.second).x = vertex.x;
             if (vertex.y > target_bounds.second.y) 
-                const_cast<Point&>(target_bounds.second).y = vertex.y;
+                const_cast<Vec2&>(target_bounds.second).y = vertex.y;
         }
     }
 
@@ -62,7 +62,7 @@ std::pair<Point, Point> Game::get_target_bounds() const {
 Target::Bed::Bed(const Polygon& shape, Game::StateDifference diff) : shape(shape), diff(diff) {}
 
 
-bool Target::Bed::inside(Point p) const {
+bool Target::Bed::inside(Vec2 p) const {
     return shape.contains(p);
 }
 
@@ -80,7 +80,7 @@ Target::Target(const std::string &filename) {
     import(filename);
 }
 
-Game::StateDifference Target::after_hit(Point p) const {
+Game::StateDifference Target::after_hit(Vec2 p) const {
     for (const auto& bed : beds) {
         if (bed.inside(p)) {
             return bed.after_hit();
@@ -98,7 +98,7 @@ void Target::Bed::import(std::istream &input) {
     input >> num_points;
     std::string _;
     input >> _; // ignore color
-    std::vector<Point> vertices(num_points);
+    std::vector<Vec2> vertices(num_points);
     for (int i = 0; i < num_points; ++i) {
         input >> vertices[i].x >> vertices[i].y;
     }

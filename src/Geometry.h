@@ -3,36 +3,32 @@
 
 #include <vector>
 
-struct Point;
-
-using PointDifference = Point;
-
-struct Point {
+struct Vec2 {
     double x;
     double y;
 
-    explicit Point(double x = 0, double y = 0) : x(x), y(y) {}
+    explicit Vec2(double x = 0, double y = 0) : x(x), y(y) {}
 
-    Point operator+(PointDifference diff) const {
-        return Point{x + diff.x, y + diff.y};
+    Vec2 operator+(Vec2 diff) const {
+        return Vec2{x + diff.x, y + diff.y};
     }
-    Point operator-(PointDifference diff) const {
-        return Point{x - diff.x, y - diff.y};
+    Vec2 operator-(Vec2 diff) const {
+        return Vec2{x - diff.x, y - diff.y};
     }
 };
 
 
 class Polygon {
 private:
-    std::vector<Point> vertices;
-    bool ray_point_intersect(Point p, Point a, Point b) const;
+    std::vector<Vec2> vertices;
+    bool ray_point_intersect(Vec2 p, Vec2 a, Vec2 b) const;
 public:
     Polygon() = default;
-    Polygon(std::vector<Point>&& vertices);
-    Polygon(const std::vector<Point>& vertices);
-    bool contains(Point p) const;
-    const std::vector<Point>& get_vertices() const { return vertices; }
-    void set_vertices(std::vector<Point>&& v) { vertices = std::move(v); }
+    Polygon(std::vector<Vec2>&& vertices);
+    Polygon(const std::vector<Vec2>& vertices);
+    bool contains(Vec2 p) const;
+    const std::vector<Vec2>& get_vertices() const { return vertices; }
+    void set_vertices(std::vector<Vec2>&& v) { vertices = std::move(v); }
 };
 
 #endif

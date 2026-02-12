@@ -6,7 +6,7 @@
 
 
 void NormalDistribution::calculate_covariance() {
-    mean = Point{0, 0};
+    mean = Vec2{0, 0};
     cov = {{{0, 0}, {0, 0}}};
 
     for (const auto& p : points) {
@@ -37,15 +37,15 @@ NormalDistribution::covariance NormalDistribution::cov_inverse() const {
     return {{{cov[1][1] / det, -cov[0][1] / det}, {-cov[1][0] / det, cov[0][0] / det}}};
 }
 
-NormalDistribution::NormalDistribution(const covariance& cov, Point mean) : cov(cov), mean(mean) {}
+NormalDistribution::NormalDistribution(const covariance& cov, Vec2 mean) : cov(cov), mean(mean) {}
 
-NormalDistribution::NormalDistribution(std::vector<Point> points) : Distribution(std::move(points)) {
+NormalDistribution::NormalDistribution(std::vector<Vec2> points) : Distribution(std::move(points)) {
     calculate_covariance();
 }
 
-double NormalDistribution::probability_density(Point p) const {
+double NormalDistribution::probability_density(Vec2 p) const {
     double c = 1.0 / (2 * M_PI * std::sqrt(cov_determinant()));
-    PointDifference diff = p - mean;
+    Vec2 diff = p - mean;
     covariance inv_cov = cov_inverse();
     double exponent = -0.5 * (
         diff.x * (inv_cov[0][0] * diff.x + inv_cov[0][1] * diff.y) +
@@ -54,7 +54,7 @@ double NormalDistribution::probability_density(Point p) const {
     return c * std::exp(exponent);
 }
 
-Point NormalDistribution::sample() const {
+Vec2 NormalDistribution::sample() const {
     std::normal_distribution<double> nd(0, 1);
     double z1 = nd(random_engine);
     double z2 = nd(random_engine);
@@ -65,13 +65,13 @@ Point NormalDistribution::sample() const {
     cholesky[0][1] = 0;
     cholesky[1][1] = std::sqrt(cov[1][1] - cholesky[1][0] * cholesky[1][0]);
 
-    return Point{
+    return Vec2{
         mean.x + cholesky[0][0] * z1,
         mean.y + cholesky[1][0] * z1 + cholesky[1][1] * z2
     };
 }
 
-void NormalDistribution::add_point(Point p) {
+void NormalDistribution::add_point(Vec2 p) {
     points.push_back(p);
     calculate_covariance();
 }
@@ -79,10 +79,10 @@ void NormalDistribution::add_point(Point p) {
 
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
-    return integrate_probability(region, PointDifference{0, 0});
+    return integrate_probability(region, Vec2{0, 0});
 }
 
-double NormalDistributionRandom::integrate_probability(const Polygon& region, PointDifference offset) const {
+double NormalDistributionRandom::integrate_probability(const Polygon& region, Vec2 offset) const {
     size_t count = 0;
     for (size_t i = 0; i < num_samples; ++i) {
         if (region.contains(sample() + offset)) {
@@ -97,6 +97,6 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
     
 }
 
-double NormalDistributionQuadrature::integrate_probability(const Polygon& region, PointDifference offset) const {
+double NormalDistributionQuadrature::integrate_probability(const Polygon& region, Vec2 offset) const {
     
 }
