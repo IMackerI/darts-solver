@@ -4,25 +4,12 @@
 #include "Geometry.h"
 
 #include <cstddef>
-#include <unordered_map>
 #include <vector>
 #include <array>
 
 class Distribution {
 protected:
     std::vector<Vec2> points;
-    std::unordered_map<size_t, std::unordered_map<Vec2, double>> probability_cache;
-
-    bool cache_contains(const Polygon& region, Vec2 offset) const {
-        size_t poly_id = region.get_id();
-        return probability_cache.contains(poly_id) && probability_cache.at(poly_id).contains(offset);
-    }
-    double cache_get(const Polygon& region, Vec2 offset) const {
-        return probability_cache.at(region.get_id()).at(offset);
-    }
-    void cache_set(const Polygon& region, Vec2 offset, double probability) {
-        probability_cache[region.get_id()][offset] = probability;
-    }
 
 public:
     Distribution() = default;
