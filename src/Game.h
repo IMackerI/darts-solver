@@ -21,7 +21,7 @@ private:
     const Distribution& distribution_;
     
     mutable std::unordered_map<Vec2, StateDiffDistribution> throw_at_cache_;
-    std::pair<Vec2, Vec2> target_bounds_ = {
+    mutable std::pair<Vec2, Vec2> target_bounds_ = {
         Vec2{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
         Vec2{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()}
     };
@@ -29,9 +29,10 @@ private:
     StateDiffDistribution throw_at_distribution_(Vec2 p) const;
 public:
     Game(const Target& target, const Distribution& distribution);
-    State throw_at_sample(Vec2 p, State current_state) const;
-    std::vector<std::pair<State, double>> throw_at(Vec2 p, State current_state) const;
-    std::pair<Vec2, Vec2> get_target_bounds() const;
+    
+    [[nodiscard]] State throw_at_sample(Vec2 p, State current_state) const;
+    [[nodiscard]] std::vector<std::pair<State, double>> throw_at(Vec2 p, State current_state) const;
+    [[nodiscard]] std::pair<Vec2, Vec2> get_target_bounds() const;
 };
 
 class Target {
@@ -47,8 +48,8 @@ public:
     void import(std::istream &input);
     void import(const std::string &filename);
 
-    Game::StateDifference after_hit(Vec2 p) const;
-    const std::vector<Bed>& get_beds() const {
+    [[nodiscard]] Game::StateDifference after_hit(Vec2 p) const;
+    [[nodiscard]] const std::vector<Bed>& get_beds() const {
         return beds_;
     }
 };
@@ -62,8 +63,8 @@ public:
     void import(std::istream &input);
 
     bool inside(Vec2 p) const;
-    Game::StateDifference after_hit() const;
-    const Polygon& get_shape() const {
+    [[nodiscard]] Game::StateDifference after_hit() const;
+    [[nodiscard]] const Polygon& get_shape() const {
         return shape_;
     }
 };

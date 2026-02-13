@@ -36,8 +36,8 @@ namespace {
 }
 
 void NormalDistribution::calculate_covariance_() {
-    mean_ = Vec2{0, 0};
-    cov_ = {{{0, 0}, {0, 0}}};
+    mean_ = Vec2{0.0, 0.0};
+    cov_ = {{{0.0, 0.0}, {0.0, 0.0}}};
 
     for (const auto& p : points_) {
         mean_.x += p.x;
@@ -85,14 +85,15 @@ double NormalDistribution::probability_density(Vec2 p) const {
 }
 
 Vec2 NormalDistribution::sample() const {
-    std::normal_distribution<double> nd(0, 1);
+    std::normal_distribution<double> nd(0.0, 1.0);
     double z1 = nd(random_engine);
     double z2 = nd(random_engine);
 
+    // Cholesky decomposition of covariance matrix
     covariance cholesky{};
     cholesky[0][0] = std::sqrt(cov_[0][0]);
     cholesky[1][0] = cov_[0][1] / cholesky[0][0];
-    cholesky[0][1] = 0;
+    cholesky[0][1] = 0.0;
     cholesky[1][1] = std::sqrt(cov_[1][1] - cholesky[1][0] * cholesky[1][0]);
 
     return Vec2{
@@ -113,23 +114,22 @@ NormalDistributionRandom::NormalDistributionRandom(std::vector<Vec2> points, siz
     : NormalDistribution(std::move(points)), num_samples_(num_samples) {}
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
-    return integrate_probability(region, Vec2{0, 0});
+    return integrate_probability(region, Vec2{0.0, 0.0});
 }
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region, Vec2 offset) const {
     size_t count = 0;
     for (size_t i = 0; i < num_samples_; ++i) {
         if (region.contains(sample() + offset)) {
-            count++;
+            ++count;
         }
     }
-    double probability = static_cast<double>(count) / num_samples_;
-    return probability;
+    return static_cast<double>(count) / static_cast<double>(num_samples_);
 }
 
 
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region) const {
-    return integrate_probability(region, Vec2{0, 0});
+    return integrate_probability(region, Vec2{0.0, 0.0});
 }
 
 double NormalDistributionQuadrature::integrate_probability(const Polygon& region, Vec2 offset) const {

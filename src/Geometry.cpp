@@ -1,4 +1,5 @@
 #include "Geometry.h"
+#include <algorithm>
 
 bool Polygon::ray_segment_intersect_(Vec2 ray_origin, Vec2 seg_start, Vec2 seg_end) {
     if (seg_start.y > seg_end.y) {

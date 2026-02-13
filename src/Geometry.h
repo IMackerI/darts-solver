@@ -42,17 +42,16 @@ inline double triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
 
 class Polygon {
 private:
-    const size_t id_ = std::rand();
     std::vector<Vec2> vertices_;
     static bool ray_segment_intersect_(Vec2 p, Vec2 a, Vec2 b);
 public:
     Polygon() = default;
     Polygon(std::vector<Vec2>&& vertices);
     Polygon(const std::vector<Vec2>& vertices);
-    bool contains(Vec2 p) const;
-    const std::vector<Vec2>& get_vertices() const { return vertices_; }
+    
+    [[nodiscard]] bool contains(Vec2 p) const;
+    [[nodiscard]] const std::vector<Vec2>& get_vertices() const { return vertices_; }
     void set_vertices(std::vector<Vec2>&& v) { vertices_ = std::move(v); }
-    size_t get_id() const { return id_; }
 };
 
 #endif

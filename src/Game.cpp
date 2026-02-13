@@ -13,18 +13,19 @@ Game::StateDiffDistribution Game::throw_at_distribution_(Vec2 p) const {
     }
 
     std::unordered_map<Game::StateDifference, double> result;
-    double total_probability = 0;
-    for (auto&& region : target_.get_beds()) {
+    double total_probability = 0.0;
+    
+    for (const auto& region : target_.get_beds()) {
         double probability = distribution_.integrate_probability(
             region.get_shape(),
-            static_cast<Vec2>(p)
+            p
         );
         total_probability += probability;
         StateDifference diff = region.after_hit();
-
         result[diff] += probability;
     }
-    result[0] += 1 - total_probability;
+    
+    result[0] += 1.0 - total_probability;
 
     throw_at_cache_[p] = std::vector<std::pair<Game::StateDifference, double>>(result.begin(), result.end());
     return throw_at_cache_.at(p);
@@ -34,23 +35,27 @@ Game::Game(const Target& target, const Distribution& distribution)
     : target_(target), distribution_(distribution) {}
 
 Game::State Game::throw_at_sample(Vec2 p, State current_state) const {
-    Vec2 sample = distribution_.sample() + static_cast<Vec2>(p);
+    Vec2 sample = distribution_.sample() + p;
     StateDifference diff = target_.after_hit(sample);
 
-    if (diff + static_cast<StateDifference>(current_state) < 0) return current_state;
-    else return current_state + diff;
+    if (diff + static_cast<StateDifference>(current_state) < 0) {
+        return current_state;
+    }
+    return current_state + diff;
 }
 
 std::vector<std::pair<Game::State, double>> Game::throw_at(Vec2 p, State current_state) const {
     auto diff_distribution = throw_at_distribution_(p);
     std::vector<std::pair<Game::State, double>> result;
+    
     for (const auto& [diff, probability] : diff_distribution) {
-        if(diff + static_cast<StateDifference>(current_state) < 0) {
+        if (diff + static_cast<StateDifference>(current_state) < 0) {
             result.emplace_back(current_state, probability);
         } else {
             result.emplace_back(current_state + diff, probability);
         }
     }
+    
     return result;
 }
 
@@ -62,13 +67,13 @@ std::pair<Vec2, Vec2> Game::get_target_bounds() const {
     for (const auto& bed : target_.get_beds()) {
         for (const auto& vertex : bed.get_shape().get_vertices()) {
             if (vertex.x < target_bounds_.first.x) 
-                const_cast<Vec2&>(target_bounds_.first).x = vertex.x;
+                target_bounds_.first.x = vertex.x;
             if (vertex.y < target_bounds_.first.y) 
-                const_cast<Vec2&>(target_bounds_.first).y = vertex.y;
+                target_bounds_.first.y = vertex.y;
             if (vertex.x > target_bounds_.second.x) 
-                const_cast<Vec2&>(target_bounds_.second).x = vertex.x;
+                target_bounds_.second.x = vertex.x;
             if (vertex.y > target_bounds_.second.y) 
-                const_cast<Vec2&>(target_bounds_.second).y = vertex.y;
+                target_bounds_.second.y = vertex.y;
         }
     }
 
