@@ -6,13 +6,16 @@
 #include <vector>
 #include <utility>
 #include <unordered_map>
+#include <map>
 
-Game::StateDiffDistribution Game::throw_at_distribution_(Vec2 p) const {
+
+// TODO remove dedup
+Game::HitDistribution Game::throw_at_distribution_(Vec2 p) const {
     if (throw_at_cache_.contains(p)) {
         return throw_at_cache_.at(p);
     }
 
-    std::unordered_map<Game::StateDifference, double> result;
+    std::map<HitData, double> result;
     double total_probability = 0.0;
     
     for (const auto& region : target_.get_beds()) {
@@ -21,43 +24,18 @@ Game::StateDiffDistribution Game::throw_at_distribution_(Vec2 p) const {
             p
         );
         total_probability += probability;
-        StateDifference diff = region.after_hit();
+        HitData diff = region.after_hit();
         result[diff] += probability;
     }
     
-    result[0] += 1.0 - total_probability;
+    result[HitData(HitData::Type::NORMAL, 0)] += 1.0 - total_probability;
 
-    throw_at_cache_[p] = std::vector<std::pair<Game::StateDifference, double>>(result.begin(), result.end());
+    throw_at_cache_[p] = std::vector<std::pair<HitData, double>>(result.begin(), result.end());
     return throw_at_cache_.at(p);
 }
 
 Game::Game(const Target& target, const Distribution& distribution) 
     : target_(target), distribution_(distribution) {}
-
-Game::State Game::throw_at_sample(Vec2 p, State current_state) const {
-    Vec2 sample = distribution_.sample() + p;
-    StateDifference diff = target_.after_hit(sample);
-
-    if (diff + static_cast<StateDifference>(current_state) < 0) {
-        return current_state;
-    }
-    return current_state + diff;
-}
-
-std::vector<std::pair<Game::State, double>> Game::throw_at(Vec2 p, State current_state) const {
-    auto diff_distribution = throw_at_distribution_(p);
-    std::vector<std::pair<Game::State, double>> result;
-    
-    for (const auto& [diff, probability] : diff_distribution) {
-        if (diff + static_cast<StateDifference>(current_state) < 0) {
-            result.emplace_back(current_state, probability);
-        } else {
-            result.emplace_back(current_state + diff, probability);
-        }
-    }
-    
-    return result;
-}
 
 std::pair<Vec2, Vec2> Game::get_target_bounds() const {
     if (target_bounds_.first.x != std::numeric_limits<double>::max()) {
@@ -80,15 +58,72 @@ std::pair<Vec2, Vec2> Game::get_target_bounds() const {
     return target_bounds_;
 }
 
-Target::Bed::Bed(const Polygon& shape, Game::StateDifference diff) : shape_(shape), diff_(diff) {}
+Game::State GameFinishOnAny::handle_throw(State current_state, HitData hit_data) const {
+    if (hit_data.diff + static_cast<StateDifference>(current_state) < 0) {
+        return current_state;
+    }
+    return current_state + hit_data.diff;
+}
+
+Game::State GameFinishOnAny::throw_at_sample(Vec2 p, State current_state) const {
+    Vec2 sample = distribution_.sample() + p;
+    HitData hit_data = target_.after_hit(sample);
+
+    return handle_throw(current_state, hit_data);
+}
+
+std::vector<std::pair<Game::State, double>> GameFinishOnAny::throw_at(Vec2 p, State current_state) const {
+    auto diff_distribution = throw_at_distribution_(p);
+    std::vector<std::pair<Game::State, double>> result;
+    
+    for (const auto& [hit_data, probability] : diff_distribution) {
+        result.emplace_back(handle_throw(current_state, hit_data), probability);
+    }
+    
+    return result;
+}
+
+
+Game::State GameFinishOnDouble::handle_throw(State current_state, HitData hit_data) const {
+    if (hit_data.diff + static_cast<StateDifference>(current_state) < 0) {
+        return current_state;
+    }
+    if (hit_data.diff + static_cast<StateDifference>(current_state) == 0) {
+        if (hit_data.type == HitData::Type::DOUBLE) {
+            return 0;
+        }
+        else return current_state;
+    }
+    return current_state + hit_data.diff;
+}
+
+Game::State GameFinishOnDouble::throw_at_sample(Vec2 p, State current_state) const {
+    Vec2 sample = distribution_.sample() + p;
+    HitData hit_data = target_.after_hit(sample);
+
+    return handle_throw(current_state, hit_data);
+}
+
+std::vector<std::pair<Game::State, double>> GameFinishOnDouble::throw_at(Vec2 p, State current_state) const {
+    auto diff_distribution = throw_at_distribution_(p);
+    std::vector<std::pair<Game::State, double>> result;
+    
+    for (const auto& [hit_data, probability] : diff_distribution) {
+        result.emplace_back(handle_throw(current_state, hit_data), probability);
+    }
+    
+    return result;
+}
+
+
 
 
 bool Target::Bed::inside(Vec2 p) const {
     return shape_.contains(p);
 }
 
-Game::StateDifference Target::Bed::after_hit() const {
-    return diff_;
+HitData Target::Bed::after_hit() const {
+    return after_hit_data_;
 }
 
 Target::Target(const std::vector<Bed>& beds) : beds_(beds) {}
@@ -101,24 +136,33 @@ Target::Target(const std::string &filename) {
     import(filename);
 }
 
-Game::StateDifference Target::after_hit(Vec2 p) const {
+HitData Target::after_hit(Vec2 p) const {
     for (const auto& bed : beds_) {
         if (bed.inside(p)) {
             return bed.after_hit();
         }
     }
-    return MISS_STATE_DIFF_;
+    return HitData(HitData::Type::NORMAL, MISS_STATE_DIFF_);
 }
 
 void Target::Bed::import(std::istream &input) {
     int score;
     input >> score;
-    diff_ = -score;
-
+    
     int num_points;
     input >> num_points;
+    
     std::string _;
     input >> _; // ignore color
+    
+    std::string type_str;
+    input >> type_str;
+    HitData::Type type = HitData::Type::NORMAL;
+    if (type_str == "double") type = HitData::Type::DOUBLE;
+    else if (type_str == "treble") type = HitData::Type::TREBLE;
+
+    after_hit_data_ = HitData(type, -score);
+    
     std::vector<Vec2> vertices(num_points);
     for (int i = 0; i < num_points; ++i) {
         input >> vertices[i].x >> vertices[i].y;

@@ -87,7 +87,7 @@ def generate_target(subdivisions=8):
 
     # --- Bullseyes (full discs / annulus) ---
     # Inner bull (Double Bull) = 50 points
-    beds.append((50, COLOR_RED, disc_polygon(INNER_BULL_RADIUS, subdivisions * 20)))
+    beds.append((50, COLOR_RED, "double", disc_polygon(INNER_BULL_RADIUS, subdivisions * 20)))
     # Outer bull (Single Bull) = 25 points
     for i, number in enumerate(NUMBERS):
         center_angle = math.radians(90) - i * SECTOR_ANGLE
@@ -97,7 +97,7 @@ def generate_target(subdivisions=8):
             INNER_BULL_RADIUS, OUTER_BULL_RADIUS,
             a_start, a_end, subdivisions
         )
-        beds.append((25, COLOR_GREEN, poly))
+        beds.append((25, COLOR_GREEN, "single", poly))
 
     # --- Numbered sectors ---
     for i, number in enumerate(NUMBERS):
@@ -113,6 +113,7 @@ def generate_target(subdivisions=8):
         beds.append((
             number,
             sector_color,
+            "single",
             ring_sector_polygon(OUTER_BULL_RADIUS, TREBLE_INNER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -121,6 +122,7 @@ def generate_target(subdivisions=8):
         beds.append((
             3 * number,
             special_color,
+            "treble",
             ring_sector_polygon(TREBLE_INNER_RADIUS, TREBLE_OUTER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -129,6 +131,7 @@ def generate_target(subdivisions=8):
         beds.append((
             number,
             sector_color,
+            "single",
             ring_sector_polygon(TREBLE_OUTER_RADIUS, DOUBLE_INNER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -138,6 +141,7 @@ def generate_target(subdivisions=8):
         beds.append((
             2 * number,
             special_color,
+            "double",
             ring_sector_polygon(DOUBLE_INNER_RADIUS, DOUBLE_OUTER_RADIUS,
                                 a_start, a_end, subdivisions)
         ))
@@ -148,8 +152,8 @@ def generate_target(subdivisions=8):
 def write_target(beds, filename):
     with open(filename, "w") as f:
         f.write(f"{len(beds)}\n")
-        for score, color, poly in beds:
-            f.write(f"{score} {len(poly)} {color}\n")
+        for score, color, kind, poly in beds:
+            f.write(f"{score} {len(poly)} {color} {kind}\n")
             coords = " ".join(f"{x:.6f} {y:.6f}" for x, y in poly)
             f.write(f"{coords}\n")
 

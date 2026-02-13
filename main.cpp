@@ -34,7 +34,7 @@ int main() {
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     try_avg_dist(&dist);
     Target target("target.out");
-    Game game(target, dist);
+    GameFinishOnAny game(target, dist);
     Solver solver(game, 10000);
 
     print_results(solver);

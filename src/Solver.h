@@ -22,7 +22,7 @@ private:
     std::vector<Vec2> sample_aims_() const;
     
 public:
-    Solver(const Game& game, size_t num_samples = 10000) 
+    Solver(const Game& game, size_t num_samples = 10000)
         : num_samples_(num_samples), game_(game) {}
     
     [[nodiscard]] Score solve_aim(Game::State s, Vec2 aim);
