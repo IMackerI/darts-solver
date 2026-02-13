@@ -3,6 +3,7 @@
 
 #include "Distribution.h"
 #include "Geometry.h"
+#include <unordered_map>
 #include <utility>
 #include <vector>
 #include <string>
@@ -14,13 +15,18 @@ class Game {
 public:
     using State = unsigned int;
     using StateDifference = int;
+    using StateDiffDistribution = std::vector<std::pair<StateDifference, double>>;
 private:
     const Target& target;
     const Distribution& distribution;
+    mutable std::unordered_map<Vec2, StateDiffDistribution> throw_at_cache;
+    
     std::pair<Vec2, Vec2> target_bounds = {
         Vec2{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
         Vec2{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()}
     };
+
+    StateDiffDistribution throw_at_distribution(Vec2 p) const;
 public:
     Game(const Target& target, const Distribution& distribution);
     State throw_at_sample(Vec2 p, State current_state) const;

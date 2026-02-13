@@ -5,7 +5,30 @@
 #include <string>
 #include <vector>
 #include <utility>
-#include <map>
+#include <unordered_map>
+
+Game::StateDiffDistribution Game::throw_at_distribution(Vec2 p) const {
+    if (throw_at_cache.contains(p)) {
+        return throw_at_cache.at(p);
+    }
+
+    std::unordered_map<Game::StateDifference, double> result;
+    double total_probability = 0;
+    for (auto&& region : target.get_beds()) {
+        double probability = distribution.integrate_probability(
+            region.get_shape(),
+            static_cast<Vec2>(p)
+        );
+        total_probability += probability;
+        StateDifference diff = region.after_hit();
+
+        result[diff] += probability;
+    }
+    result[0] += 1 - total_probability;
+
+    throw_at_cache[p] = std::vector<std::pair<Game::StateDifference, double>>(result.begin(), result.end());
+    return throw_at_cache.at(p);
+}
 
 Game::Game(const Target& target, const Distribution& distribution) 
     : target(target), distribution(distribution) {}
@@ -19,23 +42,16 @@ Game::State Game::throw_at_sample(Vec2 p, State current_state) const {
 }
 
 std::vector<std::pair<Game::State, double>> Game::throw_at(Vec2 p, State current_state) const {
-    std::map<Game::State, double> result;
-
-    double total_probability = 0;
-    for (auto&& region : target.get_beds()) {
-        double probability = distribution.integrate_probability(
-            region.get_shape(),
-            static_cast<Vec2>(p)
-        );
-        total_probability += probability;
-        StateDifference diff = region.after_hit();
-
-        if (diff + static_cast<StateDifference>(current_state) < 0) result[current_state] += probability;
-        else result[current_state + diff] += probability;
+    auto diff_distribution = throw_at_distribution(p);
+    std::vector<std::pair<Game::State, double>> result;
+    for (const auto& [diff, probability] : diff_distribution) {
+        if(diff + static_cast<StateDifference>(current_state) < 0) {
+            result.emplace_back(current_state, probability);
+        } else {
+            result.emplace_back(current_state + diff, probability);
+        }
     }
-    result[current_state] += 1 - total_probability;
-
-    return std::vector<std::pair<Game::State, double>>(result.begin(), result.end());
+    return result;
 }
 
 std::pair<Vec2, Vec2> Game::get_target_bounds() const {
