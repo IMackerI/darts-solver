@@ -17,16 +17,16 @@ public:
     using StateDifference = int;
     using StateDiffDistribution = std::vector<std::pair<StateDifference, double>>;
 private:
-    const Target& target;
-    const Distribution& distribution;
-    mutable std::unordered_map<Vec2, StateDiffDistribution> throw_at_cache;
+    const Target& target_;
+    const Distribution& distribution_;
     
-    std::pair<Vec2, Vec2> target_bounds = {
+    mutable std::unordered_map<Vec2, StateDiffDistribution> throw_at_cache_;
+    std::pair<Vec2, Vec2> target_bounds_ = {
         Vec2{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
         Vec2{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()}
     };
 
-    StateDiffDistribution throw_at_distribution(Vec2 p) const;
+    StateDiffDistribution throw_at_distribution_(Vec2 p) const;
 public:
     Game(const Target& target, const Distribution& distribution);
     State throw_at_sample(Vec2 p, State current_state) const;
@@ -37,8 +37,8 @@ public:
 class Target {
     class Bed;
 
-    std::vector<Bed> beds;
-    static constexpr int MISS_STATE_DIFF = 0;
+    std::vector<Bed> beds_;
+    static constexpr int MISS_STATE_DIFF_ = 0;
 public:
     Target() = default;
     Target(const std::vector<Bed>& beds);
@@ -49,13 +49,13 @@ public:
 
     Game::StateDifference after_hit(Vec2 p) const;
     const std::vector<Bed>& get_beds() const {
-        return beds;
+        return beds_;
     }
 };
 
 class Target::Bed {
-    Polygon shape;
-    Game::StateDifference diff = 0;
+    Polygon shape_;
+    Game::StateDifference diff_ = 0;
 public:
     Bed() = default;
     Bed(const Polygon& shape, Game::StateDifference diff);
@@ -64,7 +64,7 @@ public:
     bool inside(Vec2 p) const;
     Game::StateDifference after_hit() const;
     const Polygon& get_shape() const {
-        return shape;
+        return shape_;
     }
 };
 

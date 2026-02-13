@@ -36,27 +36,23 @@ namespace std {
     };
 }
 
-inline double det(const Vec2& a, const Vec2& b) {
-    return a.x * b.y - a.y * b.x;
-}
-
 inline double triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
     return 0.5 * std::abs((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
 }
 
 class Polygon {
 private:
-    const size_t id = std::rand();
-    std::vector<Vec2> vertices;
-    bool ray_point_intersect(Vec2 p, Vec2 a, Vec2 b) const;
+    const size_t id_ = std::rand();
+    std::vector<Vec2> vertices_;
+    static bool ray_segment_intersect_(Vec2 p, Vec2 a, Vec2 b);
 public:
     Polygon() = default;
     Polygon(std::vector<Vec2>&& vertices);
     Polygon(const std::vector<Vec2>& vertices);
     bool contains(Vec2 p) const;
-    const std::vector<Vec2>& get_vertices() const { return vertices; }
-    void set_vertices(std::vector<Vec2>&& v) { vertices = std::move(v); }
-    size_t get_id() const { return id; }
+    const std::vector<Vec2>& get_vertices() const { return vertices_; }
+    void set_vertices(std::vector<Vec2>&& v) { vertices_ = std::move(v); }
+    size_t get_id() const { return id_; }
 };
 
 #endif

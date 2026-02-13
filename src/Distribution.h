@@ -9,11 +9,11 @@
 
 class Distribution {
 protected:
-    std::vector<Vec2> points;
+    std::vector<Vec2> points_;
 
 public:
     Distribution() = default;
-    Distribution(std::vector<Vec2> points) : points(std::move(points)) {}
+    Distribution(std::vector<Vec2> points) : points_(std::move(points)) {}
     virtual ~Distribution() = default;
     virtual double probability_density(Vec2 p) const = 0;
     virtual Vec2 sample() const = 0;
@@ -26,12 +26,12 @@ class NormalDistribution : public Distribution {
 public:
     using covariance = std::array<std::array<double, 2>, 2>;
 protected:
-    covariance cov;
-    Vec2 mean;
+    covariance cov_;
+    Vec2 mean_;
 
-    void calculate_covariance();
-    double cov_determinant() const;
-    covariance cov_inverse() const;
+    void calculate_covariance_();
+    double cov_determinant_() const;
+    covariance cov_inverse_() const;
 public:
     virtual ~NormalDistribution() = default;
     NormalDistribution(const covariance& cov, Vec2 mean = Vec2{0, 0});
@@ -45,14 +45,14 @@ public:
 
 class NormalDistributionRandom final : public NormalDistribution {
 private:
-    size_t num_samples;
+    size_t num_samples_;
 public:
     NormalDistributionRandom(const covariance& cov, Vec2 mean = Vec2{0, 0}, size_t num_samples = 10000);
     NormalDistributionRandom(std::vector<Vec2> points, size_t num_samples = 1000);
     double integrate_probability(const Polygon& region) const override;
     double integrate_probability(const Polygon& region, Vec2 offset) const override;
     void set_integration_precision(size_t num_samples) {
-        this->num_samples = num_samples;
+        this->num_samples_ = num_samples;
     }
 };
 
@@ -62,22 +62,5 @@ public:
     double integrate_probability(const Polygon& region) const override;
     double integrate_probability(const Polygon& region, Vec2 offset) const override;
 };
-
-// class DiscreteDistribution : public Distribution {
-//     std::vector<Point> points;
-//     const size_t height_resolution, width_resolution;
-//     std::vector<std::vector<double>> probability_grid;
-// public:
-//     DiscreteDistribution(size_t height_resolution, size_t width_resolution);
-//     DiscreteDistribution(
-//         const std::vector<Point>& points,
-//         size_t height_resolution = 200,
-//         size_t width_resolution = 200
-//     );
-//     Point sample() const override;
-//     double integrate_probability(const Polygon& region) const override;
-//     double integrate_probability(const Polygon& region, Point offset) const override;
-//     void add_point(Point p) override;
-// };
 
 #endif

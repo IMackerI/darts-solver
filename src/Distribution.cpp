@@ -4,77 +4,79 @@
 #include <cmath>
 #include <random>
 
-// Dunavant rule 5 (degree 5, 7 quadrature points) for unit reference triangle
-// (0,0)-(1,0)-(0,1). Expanded from compressed barycentric suborders [1,3,3].
-// Weights sum to 1.0 (normalized to reference triangle area).
-// Reference: Dunavant, "High Degree Efficient Symmetrical Gaussian Quadrature
-// Rules for the Triangle", IJNME Vol 21, 1985, pp. 1129-1148.
-static constexpr int QUAD_NPTS = 7;
-static constexpr double quad_r[QUAD_NPTS] = {
-    0.333333333333333,
-    0.059715871789770, 0.470142064105115, 0.470142064105115,
-    0.797426985353087, 0.101286507323456, 0.101286507323456
-};
-static constexpr double quad_s[QUAD_NPTS] = {
-    0.333333333333333,
-    0.470142064105115, 0.470142064105115, 0.059715871789770,
-    0.101286507323456, 0.101286507323456, 0.797426985353087
-};
-static constexpr double quad_w[QUAD_NPTS] = {
-    0.225000000000000,
-    0.132394152788506, 0.132394152788506, 0.132394152788506,
-    0.125939180544827, 0.125939180544827, 0.125939180544827
-};
-
-Vec2 ref_to_physical(Vec2 v0, Vec2 v1, Vec2 v2, double r, double s) {
-    return Vec2{
-        v0.x * (1.0 - r - s) + v1.x * r + v2.x * s,
-        v0.y * (1.0 - r - s) + v1.y * r + v2.y * s
+namespace {
+    // Dunavant rule 5 (degree 5, 7 quadrature points) for unit reference triangle
+    // (0,0)-(1,0)-(0,1). Expanded from compressed barycentric suborders [1,3,3].
+    // Weights sum to 1.0 (normalized to reference triangle area).
+    // Reference: Dunavant, "High Degree Efficient Symmetrical Gaussian Quadrature
+    // Rules for the Triangle", IJNME Vol 21, 1985, pp. 1129-1148.
+    constexpr int QUAD_NPTS = 7;
+    constexpr double quad_r[QUAD_NPTS] = {
+        0.333333333333333,
+        0.059715871789770, 0.470142064105115, 0.470142064105115,
+        0.797426985353087, 0.101286507323456, 0.101286507323456
     };
-}
+    constexpr double quad_s[QUAD_NPTS] = {
+        0.333333333333333,
+        0.470142064105115, 0.470142064105115, 0.059715871789770,
+        0.101286507323456, 0.101286507323456, 0.797426985353087
+    };
+    constexpr double quad_w[QUAD_NPTS] = {
+        0.225000000000000,
+        0.132394152788506, 0.132394152788506, 0.132394152788506,
+        0.125939180544827, 0.125939180544827, 0.125939180544827
+    };
 
-void NormalDistribution::calculate_covariance() {
-    mean = Vec2{0, 0};
-    cov = {{{0, 0}, {0, 0}}};
-
-    for (const auto& p : points) {
-        mean.x += p.x;
-        mean.y += p.y;
+    Vec2 ref_to_physical(Vec2 v0, Vec2 v1, Vec2 v2, double r, double s) {
+        return Vec2{
+            v0.x * (1.0 - r - s) + v1.x * r + v2.x * s,
+            v0.y * (1.0 - r - s) + v1.y * r + v2.y * s
+        };
     }
-    mean.x /= points.size();
-    mean.y /= points.size();
+}
 
-    for (const auto& p : points) {
-        cov[0][0] += (p.x - mean.x) * (p.x - mean.x);
-        cov[0][1] += (p.x - mean.x) * (p.y - mean.y);
-        cov[1][0] += (p.y - mean.y) * (p.x - mean.x);
-        cov[1][1] += (p.y - mean.y) * (p.y - mean.y);
+void NormalDistribution::calculate_covariance_() {
+    mean_ = Vec2{0, 0};
+    cov_ = {{{0, 0}, {0, 0}}};
+
+    for (const auto& p : points_) {
+        mean_.x += p.x;
+        mean_.y += p.y;
     }
-    cov[0][0] /= points.size();
-    cov[0][1] /= points.size();
-    cov[1][0] /= points.size();
-    cov[1][1] /= points.size();
+    mean_.x /= points_.size();
+    mean_.y /= points_.size();
+
+    for (const auto& p : points_) {
+        cov_[0][0] += (p.x - mean_.x) * (p.x - mean_.x);
+        cov_[0][1] += (p.x - mean_.x) * (p.y - mean_.y);
+        cov_[1][0] += (p.y - mean_.y) * (p.x - mean_.x);
+        cov_[1][1] += (p.y - mean_.y) * (p.y - mean_.y);
+    }
+    cov_[0][0] /= points_.size();
+    cov_[0][1] /= points_.size();
+    cov_[1][0] /= points_.size();
+    cov_[1][1] /= points_.size();
 }
 
-double NormalDistribution::cov_determinant() const {
-    return cov[0][0] * cov[1][1] - cov[0][1] * cov[1][0];
+double NormalDistribution::cov_determinant_() const {
+    return cov_[0][0] * cov_[1][1] - cov_[0][1] * cov_[1][0];
 }
 
-NormalDistribution::covariance NormalDistribution::cov_inverse() const {
-    double det = cov_determinant();
-    return {{{cov[1][1] / det, -cov[0][1] / det}, {-cov[1][0] / det, cov[0][0] / det}}};
+NormalDistribution::covariance NormalDistribution::cov_inverse_() const {
+    double det = cov_determinant_();
+    return {{{cov_[1][1] / det, -cov_[0][1] / det}, {-cov_[1][0] / det, cov_[0][0] / det}}};
 }
 
-NormalDistribution::NormalDistribution(const covariance& cov, Vec2 mean) : cov(cov), mean(mean) {}
+NormalDistribution::NormalDistribution(const covariance& cov, Vec2 mean) : cov_(cov), mean_(mean) {}
 
 NormalDistribution::NormalDistribution(std::vector<Vec2> points) : Distribution(std::move(points)) {
-    calculate_covariance();
+    calculate_covariance_();
 }
 
 double NormalDistribution::probability_density(Vec2 p) const {
-    double c = 1.0 / (2 * M_PI * std::sqrt(cov_determinant()));
-    Vec2 diff = p - mean;
-    covariance inv_cov = cov_inverse();
+    double c = 1.0 / (2 * M_PI * std::sqrt(cov_determinant_()));
+    Vec2 diff = p - mean_;
+    covariance inv_cov = cov_inverse_();
     double exponent = -0.5 * (
         diff.x * (inv_cov[0][0] * diff.x + inv_cov[0][1] * diff.y) +
         diff.y * (inv_cov[1][0] * diff.x + inv_cov[1][1] * diff.y)
@@ -88,27 +90,27 @@ Vec2 NormalDistribution::sample() const {
     double z2 = nd(random_engine);
 
     covariance cholesky{};
-    cholesky[0][0] = std::sqrt(cov[0][0]);
-    cholesky[1][0] = cov[0][1] / cholesky[0][0];
+    cholesky[0][0] = std::sqrt(cov_[0][0]);
+    cholesky[1][0] = cov_[0][1] / cholesky[0][0];
     cholesky[0][1] = 0;
-    cholesky[1][1] = std::sqrt(cov[1][1] - cholesky[1][0] * cholesky[1][0]);
+    cholesky[1][1] = std::sqrt(cov_[1][1] - cholesky[1][0] * cholesky[1][0]);
 
     return Vec2{
-        mean.x + cholesky[0][0] * z1,
-        mean.y + cholesky[1][0] * z1 + cholesky[1][1] * z2
+        mean_.x + cholesky[0][0] * z1,
+        mean_.y + cholesky[1][0] * z1 + cholesky[1][1] * z2
     };
 }
 
 void NormalDistribution::add_point(Vec2 p) {
-    points.push_back(p);
-    calculate_covariance();
+    points_.push_back(p);
+    calculate_covariance_();
 }
 
 NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Vec2 mean, size_t num_samples)
-    : NormalDistribution(cov, mean), num_samples(num_samples) {}
+    : NormalDistribution(cov, mean), num_samples_(num_samples) {}
 
 NormalDistributionRandom::NormalDistributionRandom(std::vector<Vec2> points, size_t num_samples)
-    : NormalDistribution(std::move(points)), num_samples(num_samples) {}
+    : NormalDistribution(std::move(points)), num_samples_(num_samples) {}
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region) const {
     return integrate_probability(region, Vec2{0, 0});
@@ -116,12 +118,12 @@ double NormalDistributionRandom::integrate_probability(const Polygon& region) co
 
 double NormalDistributionRandom::integrate_probability(const Polygon& region, Vec2 offset) const {
     size_t count = 0;
-    for (size_t i = 0; i < num_samples; ++i) {
+    for (size_t i = 0; i < num_samples_; ++i) {
         if (region.contains(sample() + offset)) {
             count++;
         }
     }
-    double probability = static_cast<double>(count) / num_samples;
+    double probability = static_cast<double>(count) / num_samples_;
     return probability;
 }
 

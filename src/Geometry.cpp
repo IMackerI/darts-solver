@@ -1,6 +1,6 @@
 #include "Geometry.h"
 
-bool Polygon::ray_point_intersect(Vec2 ray_origin, Vec2 seg_start, Vec2 seg_end) const {
+bool Polygon::ray_segment_intersect_(Vec2 ray_origin, Vec2 seg_start, Vec2 seg_end) {
     if (seg_start.y > seg_end.y) {
         std::swap(seg_start, seg_end);
     }
@@ -14,15 +14,15 @@ bool Polygon::ray_point_intersect(Vec2 ray_origin, Vec2 seg_start, Vec2 seg_end)
     return x_intersect >= ray_origin.x;
 }
 
-Polygon::Polygon(std::vector<Vec2>&& vertices) : vertices(std::move(vertices)) {}
-Polygon::Polygon(const std::vector<Vec2>& vertices) : vertices(vertices) {}
+Polygon::Polygon(std::vector<Vec2>&& vertices) : vertices_(std::move(vertices)) {}
+Polygon::Polygon(const std::vector<Vec2>& vertices) : vertices_(vertices) {}
 
 bool Polygon::contains(Vec2 p) const {
     size_t intersections = 0;
-    for (size_t i = 0; i < vertices.size(); ++i) {
-        const Vec2& a = vertices[i];
-        const Vec2& b = vertices[(i + 1) % vertices.size()];
-        if (ray_point_intersect(p, a, b)) {
+    for (size_t i = 0; i < vertices_.size(); ++i) {
+        const Vec2& a = vertices_[i];
+        const Vec2& b = vertices_[(i + 1) % vertices_.size()];
+        if (ray_segment_intersect_(p, a, b)) {
             intersections++;
         }
     }

@@ -1,16 +1,15 @@
 #include "Solver.h"
-#include "Random.h"
 
 #include <utility>
 #include <vector>
-#include <random>
+#include <cmath>
 
-std::vector<Vec2> Solver::sample_aims() const {
+std::vector<Vec2> Solver::sample_aims_() const {
     std::vector<Vec2> aims;
-    auto [min_point, max_point] = game.get_target_bounds();
+    auto [min_point, max_point] = game_.get_target_bounds();
 
-    size_t height_samples = static_cast<size_t>(std::sqrt(NumSamples));
-    size_t width_samples = NumSamples / height_samples;
+    size_t height_samples = static_cast<size_t>(std::sqrt(num_samples_));
+    size_t width_samples = num_samples_ / height_samples;
 
     for (size_t i = 0; i < width_samples; ++i) {
         for (size_t j = 0; j < height_samples; ++j) {
@@ -23,8 +22,8 @@ std::vector<Vec2> Solver::sample_aims() const {
     return aims;
 }
 
-Solver::Score Solver::expected_score(Game::State s, Vec2 aim) {
-    auto states = game.throw_at(aim, s);
+Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
+    auto states = game_.throw_at(aim, s);
     Solver::Score expected = 0;
     double same_state_prob = 0;
 
@@ -45,16 +44,16 @@ Solver::Score Solver::expected_score(Game::State s, Vec2 aim) {
 
 std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
     if (s == 0) return {0, Vec2{0,0}};
-    if (memoization.contains(s)) { return memoization[s]; }
+    if (memoization_.contains(s)) { return memoization_[s]; }
 
     std::pair<Solver::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0,0}};
 
-    for (const auto& aim : sample_aims()) {
-        Solver::Score score = expected_score(s, aim);
+    for (const auto& aim : sample_aims_()) {
+        Solver::Score score = solve_aim(s, aim);
         if (score < best_score.first) {
             best_score = {score, aim};
         }
     }
-    return memoization[s] = best_score;
+    return memoization_[s] = best_score;
 }
 
