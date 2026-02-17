@@ -85,14 +85,14 @@ std::vector<std::pair<Game::State, double>> GameFinishOnAny::throw_at(Vec2 p, St
 
 
 Game::State GameFinishOnDouble::handle_throw(State current_state, HitData hit_data) const {
-    if (hit_data.diff + static_cast<StateDifference>(current_state) < 0) {
-        return current_state;
-    }
     if (hit_data.diff + static_cast<StateDifference>(current_state) == 0) {
         if (hit_data.type == HitData::Type::DOUBLE) {
             return 0;
         }
         else return current_state;
+    }
+    if (hit_data.diff + static_cast<StateDifference>(current_state) <= 1) {
+        return current_state;
     }
     return current_state + hit_data.diff;
 }

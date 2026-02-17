@@ -66,3 +66,23 @@ std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
     memoization_[s] = best_score;
     return best_score;
 }
+
+[[nodiscard]]  HeatMapSolver::HeatMap HeatMapSolver::heat_map(Game::State s) {
+    if (heat_map_memo_.contains(s)) {
+        return heat_map_memo_[s];
+    }
+    HeatMap heat_map(grid_height_, std::vector<Solver::Score>(grid_width_, 0.0));
+
+    auto [min_point, max_point] = target_bounds_;
+
+    for (size_t i = 0; i < grid_width_; ++i) {
+        for (size_t j = 0; j < grid_height_; ++j) {
+            double x = min_point.x + (max_point.x - min_point.x) * (i + 0.5) / grid_width_;
+            double y = min_point.y + (max_point.y - min_point.y) * (j + 0.5) / grid_height_;
+            heat_map[j][i] = solver_.solve_aim(s, Vec2{x, y});
+        }
+    }
+
+    heat_map_memo_[s] = heat_map;
+    return heat_map;
+}
