@@ -55,6 +55,13 @@ std::pair<Vec2, Vec2> Game::get_target_bounds() const {
         }
     }
 
+    double scale = target_bounds_.second.x - target_bounds_.first.x;
+    target_bounds_.first.x -= scale * 0.1;
+    target_bounds_.second.x += scale * 0.1;
+    scale = target_bounds_.second.y - target_bounds_.first.y;
+    target_bounds_.first.y -= scale * 0.1;
+    target_bounds_.second.y += scale * 0.1;
+
     return target_bounds_;
 }
 
