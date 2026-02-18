@@ -41,7 +41,6 @@ void print_results(Solver &solver, Game &game, int MAX_DARTS_STATE = 101, size_t
         std::cout << std::endl;
         std::cerr << "Finished state " << state << std::endl;
     }
-
 }
 
 int main() {

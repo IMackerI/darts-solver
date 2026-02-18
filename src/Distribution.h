@@ -207,6 +207,7 @@ public:
     /**
      * @brief Gauss quadrature integration over convex polygon.
      * Triangulates polygon from first vertex and applies 7-point quadrature.
+     * @note For very big polygons, numerical issues may arise. Use for polygons which arent much bigger than the standard deviation of the distribution.
      */
     [[nodiscard]] double integrate_probability(const Polygon& region) const override;
     
