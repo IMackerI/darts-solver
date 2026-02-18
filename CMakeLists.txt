@@ -8,7 +8,8 @@ set(CMAKE_INTERPROCEDURAL_OPTIMIZATION OFF)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 
-add_subdirectory(src)
+add_subdirectory(src/cpp)
+add_subdirectory(src/bindings)
 
 # Console application
 add_executable(darts_solver main.cpp)
