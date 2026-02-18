@@ -6,9 +6,13 @@
 #include <vector>
 
 /**
- * @brief A simple 2D vector class for representing points and vectors in the plane.
- *
- * This class provides basic arithmetic operations (+, -, *) and a hash function for use in unordered containers.
+ * @defgroup geometry Geometry
+ * @brief Geometric primitives and operations.
+ */
+
+/**
+ * @brief Simple 2D vector structure with basic arithmetic operations.
+ * @ingroup geometry
  */
 struct Vec2 {
     double x;
@@ -31,6 +35,11 @@ struct Vec2 {
 };
 
 namespace std {
+    /**
+     * @ingroup geometry
+     * @brief Hash function specialization for Vec2.
+     * Uses standard hash combining with XOR and bit shifts.
+     */
     template <>
     struct hash<Vec2> {
         size_t operator()(const Vec2& v) const {
@@ -42,34 +51,38 @@ namespace std {
 }
 
 /**
- * @brief Computes the area of a triangle defined by three points in the plane.
- * The area is calculated using the determinant method, which is efficient and numerically stable.
- *
- * @param v0 The first vertex of the triangle.
- * @param v1 The second vertex of the triangle.
- * @param v2 The third vertex of the triangle.
- * @return The area of the triangle formed by the three vertices.
+ * @ingroup geometry
+ * @brief Compute the area of a triangle using the cross product formula.
+ * @param v0 First vertex
+ * @param v1 Second vertex
+ * @param v2 Third vertex
+ * @return Absolute area of the triangle
  */
 inline double triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
     return 0.5 * std::abs((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
 }
 
-
 /**
- * @brief A class representing a polygon defined by a list of vertices.
+ * @ingroup geometry
+ * @brief A simple polygon represented by vertices.
  */
 class Polygon {
 private:
     std::vector<Vec2> vertices_;
     
-    /// @brief Determines if a ray from point p going in the positive x direction intersects with the line segment defined by points a and b.
+    /** @brief Helper for ray casting: checks if horizontal ray from p intersects segment [a,b). */
     static bool ray_segment_intersect_(Vec2 p, Vec2 a, Vec2 b);
 public:
     Polygon() = default;
     Polygon(std::vector<Vec2>&& vertices);
     Polygon(const std::vector<Vec2>& vertices);
     
-    /// @brief Checks if the point p is inside the polygon defined by the vertices.
+    /**
+     * @brief Point-in-polygon test using ray casting algorithm.
+     * Casts a horizontal ray from p to the right and counts intersections.
+     * @param p Point to test
+     * @return true if p is inside the polygon (odd number of intersections)
+     */
     [[nodiscard]] bool contains(Vec2 p) const;
     [[nodiscard]] const std::vector<Vec2>& get_vertices() const { return vertices_; }
     void set_vertices(std::vector<Vec2>&& v) { vertices_ = std::move(v); }
