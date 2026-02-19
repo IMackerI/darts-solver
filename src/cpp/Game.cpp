@@ -37,30 +37,30 @@ Game::HitDistribution Game::throw_at_distribution_(Vec2 p) const {
 Game::Game(const Target& target, const Distribution& distribution) 
     : target_(target), distribution_(distribution) {}
 
-std::pair<Vec2, Vec2> Game::get_target_bounds() const {
-    if (target_bounds_.first.x != std::numeric_limits<double>::max()) {
+Game::Bounds Game::get_target_bounds() const {
+    if (target_bounds_.min.x != std::numeric_limits<double>::max()) {
         return target_bounds_;
     }
 
     for (const auto& bed : target_.get_beds()) {
         for (const auto& vertex : bed.get_shape().get_vertices()) {
-            if (vertex.x < target_bounds_.first.x) 
-                target_bounds_.first.x = vertex.x;
-            if (vertex.y < target_bounds_.first.y) 
-                target_bounds_.first.y = vertex.y;
-            if (vertex.x > target_bounds_.second.x) 
-                target_bounds_.second.x = vertex.x;
-            if (vertex.y > target_bounds_.second.y) 
-                target_bounds_.second.y = vertex.y;
+            if (vertex.x < target_bounds_.min.x) 
+                target_bounds_.min.x = vertex.x;
+            if (vertex.y < target_bounds_.min.y) 
+                target_bounds_.min.y = vertex.y;
+            if (vertex.x > target_bounds_.max.x) 
+                target_bounds_.max.x = vertex.x;
+            if (vertex.y > target_bounds_.max.y) 
+                target_bounds_.max.y = vertex.y;
         }
     }
 
-    double scale = target_bounds_.second.x - target_bounds_.first.x;
-    target_bounds_.first.x -= scale * 0.1;
-    target_bounds_.second.x += scale * 0.1;
-    scale = target_bounds_.second.y - target_bounds_.first.y;
-    target_bounds_.first.y -= scale * 0.1;
-    target_bounds_.second.y += scale * 0.1;
+    double scale = target_bounds_.max.x - target_bounds_.min.x;
+    target_bounds_.min.x -= scale * 0.1;
+    target_bounds_.max.x += scale * 0.1;
+    scale = target_bounds_.max.y - target_bounds_.min.y;
+    target_bounds_.min.y -= scale * 0.1;
+    target_bounds_.max.y += scale * 0.1;
 
     return target_bounds_;
 }

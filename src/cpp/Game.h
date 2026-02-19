@@ -34,12 +34,16 @@ public:
     using State = unsigned int; ///< Game state (typically points remaining)
     using StateDifference = int; ///< Change in score (negative reduces remaining points)
     using HitDistribution = std::vector<std::pair<HitData, double>>; ///< Hit outcomes with probabilities
+    struct Bounds {
+        Vec2 min;
+        Vec2 max;
+    };
 protected:
     const Target& target_;
     const Distribution& distribution_;
     
     mutable std::unordered_map<Vec2, HitDistribution> throw_at_cache_;
-    mutable std::pair<Vec2, Vec2> target_bounds_ = {
+    mutable Bounds target_bounds_ = {
         Vec2{std::numeric_limits<double>::max(), std::numeric_limits<double>::max()},
         Vec2{std::numeric_limits<double>::lowest(), std::numeric_limits<double>::lowest()}
     };
@@ -53,7 +57,7 @@ public:
      * @brief Get bounding box of target with 10% padding.
      * @return (min_corner, max_corner) pair
      */
-    [[nodiscard]] std::pair<Vec2, Vec2> get_target_bounds() const;
+    [[nodiscard]] Bounds get_target_bounds() const;
     
     virtual ~Game() = default;
     

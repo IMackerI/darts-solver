@@ -98,12 +98,13 @@ public:
 class HeatMapSolver {
 public:
     using HeatMap = std::vector<std::vector<Solver::Score>>; ///< Grid of scores [row][col]
+    using Bounds = Game::Bounds; ///< Bounding box of target (min, max)
 private:
     Solver solver_;
     size_t grid_height_;
     size_t grid_width_;
     std::unordered_map<Game::State, HeatMap> heat_map_memo_;
-    std::pair<Vec2, Vec2> target_bounds_;
+    Bounds target_bounds_;
 
 public:
     /**
