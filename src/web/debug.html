@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Solver WebAssembly Debug</title>
+    <style>
+        body {
+            font-family: 'Courier New', monospace;
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 20px;
+            background-color: #1e1e1e;
+            color: #d4d4d4;
+        }
+        h1 {
+            color: #4ec9b0;
+        }
+        h2 {
+            color: #dcdcaa;
+            margin-top: 30px;
+        }
+        .test-section {
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success {
+            color: #4ec9b0;
+        }
+        .error {
+            color: #f48771;
+        }
+        .warning {
+            color: #dcdcaa;
+        }
+        button {
+            background-color: #0e639c;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 14px;
+            margin: 5px;
+        }
+        button:hover {
+            background-color: #1177bb;
+        }
+        button:disabled {
+            background-color: #3c3c3c;
+            cursor: not-allowed;
+        }
+        .output {
+            white-space: pre-wrap;
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            padding: 10px;
+            margin-top: 10px;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .test-result {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        #status {
+            font-weight: bold;
+            padding: 10px;
+            border-radius: 3px;
+            margin-bottom: 20px;
+        }
+        .loading {
+            background-color: #3c3c3c;
+        }
+        .ready {
+            background-color: #0e639c;
+        }
+    </style>
+</head>
+<body>
+    <h1>🎯 Darts Solver WebAssembly Debug Console</h1>
+    
+    <div id="status" class="loading">Loading WebAssembly module...</div>
+
+    <div class="test-section">
+        <h2>Quick Test Controls</h2>
+        <button id="testAllBtn" disabled>Run All Tests</button>
+        <button id="testBasicBtn" disabled>Test Basic Types</button>
+        <button id="testDistributionBtn" disabled>Test Distributions</button>
+        <button id="testGameBtn" disabled>Test Game Classes</button>
+        <button id="clearBtn">Clear Output</button>
+    </div>
+
+    <div class="test-section">
+        <h2>Manual Testing</h2>
+        <div>
+            <label>Target file: <input type="text" id="targetFile" value="target.out" style="background:#252526; color:#d4d4d4; border:1px solid #3c3c3c; padding:5px;"></label>
+        </div>
+        <div style="margin-top:10px;">
+            <label>Throw state: <input type="number" id="throwState" value="501" style="background:#252526; color:#d4d4d4; border:1px solid #3c3c3c; padding:5px; width:80px;"></label>
+            <button id="testThrowBtn" disabled>Test Throw</button>
+        </div>
+    </div>
+
+    <div class="test-section">
+        <h2>Test Output</h2>
+        <div id="output" class="output"></div>
+    </div>
+
+    <script src="darts_wasm.js"></script>
+    <script src="debug.js"></script>
+</body>
+</html>
