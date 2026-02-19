@@ -4,6 +4,7 @@
 #include "Geometry.h"
 
 #include <cstddef>
+#include <stdexcept>
 #include <vector>
 #include <array>
 
@@ -100,6 +101,13 @@ public:
      * @param mean Mean vector (default is origin)
      */
     NormalDistribution(const covariance& cov, Vec2 mean = Vec2{0, 0});
+
+    /**
+     * @brief Construct from flat covariance array and mean.
+     * @param cov_flat Flat array [cov00, cov01, cov10, cov11]
+     * @param mean Mean vector (default is origin)
+     */
+    NormalDistribution(const std::vector<double>& cov_flat, Vec2 mean = Vec2{0, 0});
     
     /**
      * @brief Construct by fitting to sample points.
@@ -153,6 +161,14 @@ public:
      */
     NormalDistributionRandom(const covariance& cov, Vec2 mean = Vec2{0, 0}, size_t num_samples = 10000);
     
+    /**
+     * @brief Construct from flat covariance array and mean.
+     * @param cov_flat Flat array [cov00, cov01, cov10, cov11]
+     * @param mean Mean vector
+     * @param num_samples Number of Monte Carlo samples for integration (default 10000)
+     */
+    NormalDistributionRandom(const std::vector<double>& cov_flat, Vec2 mean = Vec2{0, 0}, size_t num_samples = 10000);
+
     /**
      * @brief Construct by fitting to points.
      * @param points Sample points

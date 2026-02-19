@@ -69,6 +69,14 @@ NormalDistribution::covariance NormalDistribution::cov_inverse_() const {
 
 NormalDistribution::NormalDistribution(const covariance& cov, Vec2 mean) : cov_(cov), mean_(mean) {}
 
+NormalDistribution::NormalDistribution(const std::vector<double>& cov_flat, Vec2 mean) {
+    if (cov_flat.size() != 4) {
+        throw std::invalid_argument("Covariance flat array must have 4 elements");
+    }
+    cov_ = {{{cov_flat[0], cov_flat[1]}, {cov_flat[2], cov_flat[3]}}};
+    mean_ = mean;
+}
+
 NormalDistribution::NormalDistribution(std::vector<Vec2> points) : Distribution(std::move(points)) {
     calculate_covariance_();
 }
@@ -109,6 +117,9 @@ void NormalDistribution::add_point(Vec2 p) {
 
 NormalDistributionRandom::NormalDistributionRandom(const covariance& cov, Vec2 mean, size_t num_samples)
     : NormalDistribution(cov, mean), num_samples_(num_samples) {}
+
+NormalDistributionRandom::NormalDistributionRandom(const std::vector<double>& cov_flat, Vec2 mean, size_t num_samples)
+    : NormalDistribution(cov_flat, mean), num_samples_(num_samples) {}
 
 NormalDistributionRandom::NormalDistributionRandom(std::vector<Vec2> points, size_t num_samples)
     : NormalDistribution(std::move(points)), num_samples_(num_samples) {}
