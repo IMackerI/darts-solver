@@ -1,12 +1,37 @@
 #include <emscripten/bind.h>
+#include <emscripten/val.h>
 #include "../cpp/Geometry.h"
 #include "../cpp/Game.h"
 #include "../cpp/Distribution.h"
 #include "../cpp/Solver.h"
 #include <string>
+#include <array>
 #include <sstream>
 
 using namespace emscripten;
+
+// Helper function to convert JavaScript array to covariance matrix
+NormalDistribution::covariance js_to_covariance(const val& js_array) {
+    NormalDistribution::covariance cov;
+    for (int i = 0; i < 2; ++i) {
+        val row = js_array[i];
+        for (int j = 0; j < 2; ++j) {
+            cov[i][j] = row[j].as<double>();
+        }
+    }
+    return cov;
+}
+
+// Wrapper constructors that take JavaScript arrays
+NormalDistributionQuadrature* createNormalDistributionQuadrature(const val& cov_array, Vec2 mean) {
+    auto cov = js_to_covariance(cov_array);
+    return new NormalDistributionQuadrature(cov, mean);
+}
+
+NormalDistributionRandom* createNormalDistributionRandom(const val& cov_array, Vec2 mean, size_t num_samples) {
+    auto cov = js_to_covariance(cov_array);
+    return new NormalDistributionRandom(cov, mean, num_samples);
+}
 
 // Helper to create Target from string content instead of file
 Target* createTargetFromString(const std::string& content) {
@@ -42,13 +67,13 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     // Abstract NormalDistribution - no constructor
     class_<NormalDistribution, base<Distribution>>("NormalDistribution");
     
-    // Concrete distribution classes - direct constructors with flat arrays
+    // Concrete distribution classes - use wrapper constructors
     class_<NormalDistributionRandom, base<NormalDistribution>>("NormalDistributionRandom")
-        .constructor<std::vector<double>, Vec2, size_t>()
+        .constructor(&createNormalDistributionRandom, allow_raw_pointers())
         .function("set_integration_precision", &NormalDistributionRandom::set_integration_precision);
     
     class_<NormalDistributionQuadrature, base<NormalDistribution>>("NormalDistributionQuadrature")
-        .constructor<std::vector<double>, Vec2>();
+        .constructor(&createNormalDistributionQuadrature, allow_raw_pointers());
     
     // Abstract Game base - expose inherited functions
     class_<Game>("Game")

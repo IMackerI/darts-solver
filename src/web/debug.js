@@ -64,12 +64,12 @@ function testDistributions() {
     
     try {
         // Test NormalDistributionQuadrature
-        // JavaScript arrays are passed directly to C++ wrapper
-        const cov = [[1600, 0], [0, 1600]];
+        // JavaScript arrays are passed directly to C++ (flat array: [row0_col0, row0_col1, row1_col0, row1_col1])
+        const cov = [1600, 0, 0, 1600];
         const mean = {x: 0, y: 0};
         
         log('Creating NormalDistributionQuadrature...');
-        log('Covariance matrix: [[1600, 0], [0, 1600]]');
+        log('Covariance matrix (flat): [1600, 0, 0, 1600]');
         const dist = new dartsModule.NormalDistributionQuadrature(cov, mean);
         testPassed('NormalDistributionQuadrature constructor');
         
@@ -107,7 +107,7 @@ function testDistributions() {
     // Test NormalDistributionRandom
     try {
         log('\nTesting NormalDistributionRandom...');
-        const cov = [[1600, 0], [0, 1600]];
+        const cov = [1600, 0, 0, 1600];
         const mean = {x: 0, y: 0};
         const numSamples = 1000;
         
@@ -155,7 +155,7 @@ async function testGameClasses() {
         testPassed('Target constructor from string');
         
         // Create Distribution
-        const cov = [[1600, 0], [0, 1600]];
+        const cov = [1600, 0, 0, 1600];
         const mean = {x: 0, y: 0};
         dist = new dartsModule.NormalDistributionQuadrature(cov, mean);
         testPassed('Distribution created for Game');
@@ -167,10 +167,10 @@ async function testGameClasses() {
         
         // Test inherited method get_target_bounds
         log('Testing get_target_bounds()...');
-        const bounds = dartsModule.getTargetBounds(game);
+        const bounds = game.get_target_bounds();
         log(`Target bounds: min(${bounds.min.x.toFixed(2)}, ${bounds.min.y.toFixed(2)}) ` +
             `max(${bounds.max.x.toFixed(2)}, ${bounds.max.y.toFixed(2)})`);
-        testPassed('getTargetBounds() wrapper function');
+        testPassed('Game.get_target_bounds() method');
         
         // Test throw_at_sample
         const aimPoint = {x: 0, y: 0};
@@ -227,7 +227,7 @@ async function testSolver() {
         const targetContent = await response.text();
         target = new dartsModule.Target(targetContent);
         
-        const cov = [[1600, 0], [0, 1600]];
+        const cov = [1600, 0, 0, 1600];
         const mean = {x: 0, y: 0};
         dist = new dartsModule.NormalDistributionQuadrature(cov, mean);
         
@@ -293,7 +293,7 @@ async function testManualThrow() {
         const targetContent = await response.text();
         
         const target = new dartsModule.Target(targetContent);
-        const cov = [[1600, 0], [0, 1600]];
+        const cov = [1600, 0, 0, 1600];
         const dist = new dartsModule.NormalDistributionQuadrature(cov, {x: 0, y: 0});
         const game = new dartsModule.GameFinishOnDouble(target, dist);
         
