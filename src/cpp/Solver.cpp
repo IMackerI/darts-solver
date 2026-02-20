@@ -32,8 +32,14 @@ Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
             same_state_prob += probability;
             continue;
         }
-        
-        expected += solve(state).first * probability;
+        Solver::Score state_score = solve(state).first;
+
+        if (!winable_.contains(state)) {
+            same_state_prob += probability;
+            continue;
+        }
+
+        expected += state_score * probability;
     }
 
     if (same_state_prob >= 1.0 - EPSILON) {
@@ -47,6 +53,7 @@ Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
 
 std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
     if (s == 0) {
+        winable_.insert(0);
         return {0.0, Vec2{0.0, 0.0}};
     }
     
@@ -55,15 +62,21 @@ std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
     }
 
     std::pair<Solver::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+    bool is_winable = false;
 
     for (const auto& aim : sample_aims_()) {
         Solver::Score score = solve_aim(s, aim);
         if (score < best_score.first) {
             best_score = {score, aim};
         }
+        if (score < INFINITE_SCORE) {
+            is_winable = true;
+        }
     }
     
+    if (is_winable) winable_.insert(s);
     memoization_[s] = best_score;
+
     return best_score;
 }
 

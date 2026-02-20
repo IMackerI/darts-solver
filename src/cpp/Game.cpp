@@ -98,7 +98,7 @@ Game::State GameFinishOnDouble::handle_throw(State current_state, HitData hit_da
         }
         else return current_state;
     }
-    if (hit_data.diff + static_cast<StateDifference>(current_state) <= 1) {
+    if (hit_data.diff + static_cast<StateDifference>(current_state) < 0) {
         return current_state;
     }
     return current_state + hit_data.diff;

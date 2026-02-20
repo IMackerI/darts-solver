@@ -4,6 +4,7 @@
 #include "Geometry.h"
 #include "Game.h"
 
+#include <unordered_set>
 #include <vector>
 #include <unordered_map>
 
@@ -44,6 +45,7 @@ private:
     const size_t num_samples_;  ///< Number of aim points to sample
     const Game& game_;
     std::unordered_map<Game::State, std::pair<Score, Vec2>> memoization_;
+    std::unordered_set<Game::State> winable_;
 
     /** @brief Generate uniform grid of aim points over target bounds. */
     std::vector<Vec2> sample_aims_() const;

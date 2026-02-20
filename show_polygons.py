@@ -28,11 +28,12 @@ def parse_target_file(filename):
         
         idx += 1
 
+        # Parse all vertices from a single line
+        coords = list(map(float, lines[idx].split()))
         vertices = []
-        for _ in range(num_vertices):
-            x, y = map(float, lines[idx].split())
-            vertices.append([x, y])
-            idx += 1
+        for i in range(0, len(coords), 2):
+            vertices.append([coords[i], coords[i+1]])
+        idx += 1
         
         polygons.append({
             'score': score,
