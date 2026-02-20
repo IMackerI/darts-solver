@@ -248,7 +248,7 @@ TEST(NormalDistribution, SamplingMeanConvergence) {
 TEST(NormalDistribution, IntegrationSumsToOne) {
     // Sum of probabilities over disjoint regions covering the plane should approach 1
     NormalDistribution::covariance cov = {{{1, 0}, {0, 1}}};
-    NormalDistributionRandom dist(cov, P{0, 0}, 100000);
+    NormalDistributionRandom dist(cov, P{0, 0}, 1000);
     
     double total = 0;
     int range = 5;

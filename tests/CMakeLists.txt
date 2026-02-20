@@ -12,6 +12,7 @@ add_executable(darts_tests
   test_distributions.cpp
   test_geometry.cpp
   test_game.cpp
+  test_integration.cpp
 )
 
 target_link_libraries(darts_tests PRIVATE
