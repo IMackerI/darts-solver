@@ -238,8 +238,21 @@ async function testSolver() {
         solver = new dartsModule.Solver(game, 1000);
         testPassed('Solver constructor with Game parameter');
         
-        log('✓ Solver creation successful!');
-        log('Note: solve() method binding will be tested when implemented');
+        // Test solve method
+        log('Testing solve() method for state 50...');
+        const result = dartsModule.solverSolve(solver, 50);
+        log(`State 50: Expected throws: ${result.expected_throws.toFixed(3)}, ` +
+            `Optimal aim: (${result.optimal_aim.x.toFixed(2)}, ${result.optimal_aim.y.toFixed(2)})`);
+        testPassed('Solver.solve() method');
+        
+        // Test a few more states
+        log('Testing multiple states...');
+        for (const state of [20, 30, 40]) {
+            const res = dartsModule.solverSolve(solver, state);
+            log(`  State ${state}: ${res.expected_throws.toFixed(3)} throws, ` +
+                `aim (${res.optimal_aim.x.toFixed(2)}, ${res.optimal_aim.y.toFixed(2)})`);
+        }
+        testPassed('Multiple solve() calls');
         
     } catch (error) {
         testFailed('Solver test', error.message);
@@ -247,6 +260,79 @@ async function testSolver() {
     } finally {
         // Cleanup
         if (solver) solver.delete();
+        if (game) game.delete();
+        if (dist) dist.delete();
+        if (target) target.delete();
+    }
+    
+    return true;
+}
+
+// Test 5: HeatMapSolver Class
+async function testHeatMapSolver() {
+    log('\n=== Testing HeatMapSolver Class ===', 'warning');
+    
+    let target = null;
+    let dist = null;
+    let game = null;
+    let heatMapSolver = null;
+    
+    try {
+        // Setup - load target
+        const targetFile = document.getElementById('targetFile').value;
+        const response = await fetch(targetFile);
+        if (!response.ok) {
+            throw new Error(`Failed to load ${targetFile}`);
+        }
+        const targetContent = await response.text();
+        target = new dartsModule.Target(targetContent);
+        
+        const cov = [1600, 0, 0, 1600];
+        const mean = {x: 0, y: 0};
+        dist = new dartsModule.NormalDistributionQuadrature(cov, mean);
+        
+        game = new dartsModule.GameFinishOnDouble(target, dist);
+        
+        // Create HeatMapSolver
+        log('Creating HeatMapSolver with 20x20 grid, 500 samples...');
+        const gridHeight = 20;
+        const gridWidth = 20;
+        const numSamples = 500;
+        heatMapSolver = new dartsModule.HeatMapSolver(game, gridHeight, gridWidth, numSamples);
+        testPassed('HeatMapSolver constructor');
+        
+        // Generate heat map for a state
+        log('Generating heat map for state 50...');
+        const heatMap = heatMapSolver.heat_map(50);
+        log(`Heat map size: ${heatMap.size()} rows`);
+        
+        if (heatMap.size() > 0) {
+            const firstRow = heatMap.get(0);
+            log(`First row size: ${firstRow.size()} columns`);
+            
+            // Find min and max values
+            let minVal = Infinity;
+            let maxVal = -Infinity;
+            for (let i = 0; i < heatMap.size(); i++) {
+                const row = heatMap.get(i);
+                for (let j = 0; j < row.size(); j++) {
+                    const val = row.get(j);
+                    minVal = Math.min(minVal, val);
+                    maxVal = Math.max(maxVal, val);
+                }
+            }
+            log(`Heat map value range: ${minVal.toFixed(3)} to ${maxVal.toFixed(3)}`);
+            testPassed('HeatMapSolver.heat_map() method');
+        } else {
+            throw new Error('Heat map is empty');
+        }
+        
+    } catch (error) {
+        testFailed('HeatMapSolver test', error.message);
+        return false;
+    } finally {
+        // Cleanup
+        if (heatMapSolver) heatMapSolver.delete();
         if (game) game.delete();
         if (dist) dist.delete();
         if (target) target.delete();
@@ -267,6 +353,7 @@ async function runAllTests() {
     allPassed = testDistributions() && allPassed;
     allPassed = (await testGameClasses()) && allPassed;
     allPassed = (await testSolver()) && allPassed;
+    allPassed = (await testHeatMapSolver()) && allPassed;
     
     log('\n====================================');
     if (allPassed) {
@@ -328,6 +415,8 @@ async function initWasm() {
         document.getElementById('testBasicBtn').disabled = false;
         document.getElementById('testDistributionBtn').disabled = false;
         document.getElementById('testGameBtn').disabled = false;
+        document.getElementById('testSolverBtn').disabled = false;
+        document.getElementById('testHeatMapBtn').disabled = false;
         document.getElementById('testThrowBtn').disabled = false;
         
         log('✓ Module loaded successfully!', 'success');
@@ -339,7 +428,8 @@ async function initWasm() {
         log('  - GameFinishOnAny', 'info');
         log('  - GameFinishOnDouble', 'info');
         log('  - Solver', 'info');
-        log('\nClick "Run All Tests" to verify bindings!', 'warning');
+        log('  - HeatMapSolver', 'info');
+        log('\\nClick "Run All Tests" to verify bindings!', 'warning');
         
     } catch (error) {
         document.getElementById('status').textContent = '✗ Error loading module: ' + error.message;
@@ -364,6 +454,14 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('testGameBtn').addEventListener('click', async () => {
         clearOutput();
         await testGameClasses();
+    });
+    document.getElementById('testSolverBtn').addEventListener('click', async () => {
+        clearOutput();
+        await testSolver();
+    });
+    document.getElementById('testHeatMapBtn').addEventListener('click', async () => {
+        clearOutput();
+        await testHeatMapSolver();
     });
     document.getElementById('testThrowBtn').addEventListener('click', testManualThrow);
     document.getElementById('clearBtn').addEventListener('click', clearOutput);

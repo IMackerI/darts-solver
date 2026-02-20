@@ -10,13 +10,19 @@
 
 using namespace emscripten;
 
+// Helper struct for Solver::solve return value
+struct SolveResult {
+    double expected_throws;
+    Vec2 optimal_aim;
+};
+
 // Helper function to convert JavaScript array to covariance matrix
 NormalDistribution::covariance js_to_covariance(const val& js_array) {
     NormalDistribution::covariance cov;
+    // Expecting flat array: [row0_col0, row0_col1, row1_col0, row1_col1]
     for (int i = 0; i < 2; ++i) {
-        val row = js_array[i];
         for (int j = 0; j < 2; ++j) {
-            cov[i][j] = row[j].as<double>();
+            cov[i][j] = js_array[i * 2 + j].as<double>();
         }
     }
     return cov;
@@ -39,7 +45,17 @@ Target* createTargetFromString(const std::string& content) {
     return new Target(ss);
 }
 
+// Wrapper for Solver::solve to return a simple struct
+SolveResult solverSolve(Solver& solver, Game::State state) {
+    auto [score, aim] = solver.solve(state);
+    return SolveResult{score, aim};
+}
+
 EMSCRIPTEN_BINDINGS(darts_module) {
+    // Register vector types
+    register_vector<double>("VectorDouble");
+    register_vector<std::vector<double>>("VectorVectorDouble");
+    
     // Vec2 value type
     value_object<Vec2>("Vec2")
         .field("x", &Vec2::x)
@@ -49,6 +65,11 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     value_object<Game::Bounds>("Bounds")
         .field("min", &Game::Bounds::min)
         .field("max", &Game::Bounds::max);
+    
+    // SolveResult struct for Solver::solve return value
+    value_object<SolveResult>("SolveResult")
+        .field("expected_throws", &SolveResult::expected_throws)
+        .field("optimal_aim", &SolveResult::optimal_aim);
     
     // Constructor function for Vec2
     function("createVec2", optional_override([](double x, double y) {
@@ -90,4 +111,12 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     // Solver
     class_<Solver>("Solver")
         .constructor<const Game&, size_t>();
+    
+    // Wrapper function for Solver::solve (returns SolveResult instead of std::pair)
+    function("solverSolve", &solverSolve);
+    
+    // HeatMapSolver
+    class_<HeatMapSolver>("HeatMapSolver")
+        .constructor<const Game&, size_t, size_t, size_t>()
+        .function("heat_map", &HeatMapSolver::heat_map);
 }
