@@ -543,6 +543,21 @@ select:focus, input[type="number"]:focus {
 .shortcut-table { border-collapse: collapse; margin-top: 6px; }
 .shortcut-table td { padding: 3px 12px 3px 0; }
 
+.heatmap-tooltip {
+    position: fixed;
+    padding: 4px 10px;
+    background: rgba(30,30,30,.92);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text);
+    font-size: .8rem;
+    pointer-events: none;
+    white-space: nowrap;
+    z-index: 90;
+    transform: translate(14px, -50%);
+}
+.heatmap-tooltip.hidden { display: none; }
+
 /* ===== Loading Overlay ===== */
 .overlay {
     position: fixed;
