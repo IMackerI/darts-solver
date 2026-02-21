@@ -40,14 +40,14 @@ export function mount(parsedBeds, parsedBounds) {
         _abortCtrl.current = ac;
         const sig = { signal: ac.signal };
 
-        document.getElementById('btn-solve').addEventListener('click', _onSolve, sig);
-        document.getElementById('show-heatmap').addEventListener('change', _onHeatmapToggle, sig);
-        document.getElementById('heatmap-resolution').addEventListener('change', _onResChange, sig);
-        document.getElementById('btn-state-prev').addEventListener('click', () => _stepState(-1), sig);
-        document.getElementById('btn-state-next').addEventListener('click', () => _stepState(+1), sig);
+        document.getElementById('btn-solve').addEventListener('click', (e) => { e.target.blur(); _onSolve(); }, sig);
+        document.getElementById('show-heatmap').addEventListener('change', (e) => { e.target.blur(); _onHeatmapToggle(); }, sig);
+        document.getElementById('heatmap-resolution').addEventListener('change', (e) => { e.target.blur(); _onResChange(); }, sig);
+        document.getElementById('btn-state-prev').addEventListener('click', (e) => { e.target.blur(); _stepState(-1); }, sig);
+        document.getElementById('btn-state-next').addEventListener('click', (e) => { e.target.blur(); _stepState(+1); }, sig);
         document.addEventListener('keydown', _onKeyDown, sig);
         for (const id of ['game-mode', 'game-state', 'solver-type', 'aim-samples']) {
-            document.getElementById(id).addEventListener('change', _syncFormToState, sig);
+            document.getElementById(id).addEventListener('change', (e) => { e.target.blur(); _syncFormToState(); }, sig);
         }
     }
 
@@ -107,10 +107,10 @@ function _stepState(delta) {
 }
 
 function _onKeyDown(e) {
-    // Only act when solver page is visible and no input is focused
+    // Only block arrows when typing in a text input
     const active = document.activeElement;
-    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
-    if (isInput) return;
+    const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+    if (isTyping) return;
 
     if (e.key === 'ArrowLeft') {
         e.preventDefault();
@@ -207,8 +207,13 @@ async function _onHeatmapToggle() {
     State.set('solver.showHeatmap', on);
     _toggleHeatmapRes();
 
-    if (on && State.get('solver.optimalAim')) {
-        // Recompute heatmap with current settings
+    if (on) {
+        // If no solve has been done yet, run a full solve (which includes heatmap)
+        if (!State.get('solver.optimalAim')) {
+            await _onSolve();
+            return;
+        }
+        // Otherwise just recompute heatmap with current settings
         const cov = _getCovariance() || [1600, 0, 0, 1600];
         const gameMode   = document.getElementById('game-mode').value;
         const stateVal   = parseInt(document.getElementById('game-state').value, 10);
@@ -250,21 +255,18 @@ async function _onResChange() {
     }
 }
 
-/* --- loading overlay (with 500ms grace period) --- */
-
-let _loadingTimer = null;
+/* --- loading overlay (CSS handles 500ms fade-in delay) --- */
 
 function _showLoading(msg) {
     document.getElementById('loading-message').textContent = msg;
-    // Only show overlay if the operation takes longer than 500ms
-    clearTimeout(_loadingTimer);
-    _loadingTimer = setTimeout(() => {
-        document.getElementById('loading-overlay').classList.remove('hidden');
-    }, 500);
+    const overlay = document.getElementById('loading-overlay');
+    overlay.classList.remove('hidden');
+    // Reset animation so the delay re-triggers each time
+    overlay.style.animation = 'none';
+    overlay.offsetHeight; // force reflow
+    overlay.style.animation = '';
 }
 function _hideLoading() {
-    clearTimeout(_loadingTimer);
-    _loadingTimer = null;
     document.getElementById('loading-overlay').classList.add('hidden');
 }
 function _nextFrame() {

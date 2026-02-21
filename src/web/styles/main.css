@@ -512,8 +512,14 @@ select:focus, input[type="number"]:focus {
     align-items: center;
     justify-content: center;
     z-index: 100;
+    /* Stay invisible for 500ms, then fade in */
+    animation: overlayFadeIn .25s ease .5s both;
 }
 .overlay.hidden { display: none; }
+@keyframes overlayFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+}
 
 /* Dartboard-style spinner */
 .spinner {
