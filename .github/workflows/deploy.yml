@@ -29,6 +29,9 @@ jobs:
       - name: Build WASM
         run: bash build_wasm.sh
 
+      - name: Generate target.out
+        run: python3 gen_target.py 8 src/web/target.out
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
