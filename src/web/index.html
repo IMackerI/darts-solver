@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Darts Solver</title>
+    <link rel="stylesheet" href="styles/main.css">
+</head>
+<body>
+    <!-- Sidebar Navigation -->
+    <nav id="sidebar">
+        <div class="sidebar-header">
+            <h1>🎯 Darts Solver</h1>
+        </div>
+        <ul class="nav-links">
+            <li><a href="#/" class="nav-link active" data-page="landing">Home</a></li>
+            <li><a href="#/calibrate" class="nav-link" data-page="calibration">Calibration</a></li>
+            <li><a href="#/solve" class="nav-link" data-page="solver">Solver</a></li>
+        </ul>
+        <div class="sidebar-footer">
+            <div id="wasm-status" class="status loading">Loading WASM...</div>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <main id="content">
+
+        <!-- Landing Page -->
+        <section id="page-landing" class="page active">
+            <div class="page-inner">
+                <h2>Welcome to Darts Solver</h2>
+                <p class="lead">
+                    Find the optimal aiming strategy for any game state using probabilistic modeling
+                    and Monte Carlo simulation &mdash; all running in your browser via WebAssembly.
+                </p>
+
+                <div class="card-grid">
+                    <div class="card">
+                        <h3>1. Calibrate</h3>
+                        <p>
+                            Throw darts at the bull's-eye and click where they land.
+                            The solver estimates your personal accuracy distribution.
+                        </p>
+                        <a href="#/calibrate" class="btn">Start Calibration →</a>
+                    </div>
+                    <div class="card">
+                        <h3>2. Solve</h3>
+                        <p>
+                            Pick a game state and see the optimal aim point, expected throws
+                            to finish, and a heatmap of scores across the board.
+                        </p>
+                        <a href="#/solve" class="btn">Open Solver →</a>
+                    </div>
+                </div>
+
+                <div class="info-section">
+                    <h3>How it works</h3>
+                    <ul>
+                        <li><strong>Your accuracy</strong> is modeled as a 2D normal distribution estimated from your calibration shots.</li>
+                        <li><strong>Dynamic programming</strong> finds the aim point that minimizes expected throws for any state.</li>
+                        <li><strong>Heatmaps</strong> visualize expected throws or expected points across every possible aim point.</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Calibration Page -->
+        <section id="page-calibration" class="page">
+            <div class="page-inner">
+                <h2>Calibration</h2>
+                <p class="subtitle">Aim at the bull's-eye and click where your darts actually land.</p>
+
+                <div class="two-col">
+                    <!-- Canvas column -->
+                    <div class="canvas-wrap">
+                        <canvas id="calibration-canvas" width="600" height="600"></canvas>
+                    </div>
+
+                    <!-- Controls column -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <h3>Shots</h3>
+                            <p id="shot-count">0 shots recorded</p>
+                            <div class="btn-row">
+                                <button id="btn-undo" class="btn btn-secondary" disabled>Undo Last</button>
+                                <button id="btn-clear" class="btn btn-danger" disabled>Clear All</button>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h3>Distribution</h3>
+                            <div id="distribution-info" class="info-box">
+                                <p class="muted">Record at least 3 shots to estimate your distribution.</p>
+                            </div>
+                            <button id="btn-estimate" class="btn" disabled>Estimate Distribution</button>
+                        </div>
+
+                        <div class="control-group">
+                            <h3>Data</h3>
+                            <div class="btn-row">
+                                <button id="btn-export" class="btn btn-secondary" disabled>Export</button>
+                                <button id="btn-import" class="btn btn-secondary">Import</button>
+                            </div>
+                            <input type="file" id="import-file" accept=".json" hidden>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Solver Page -->
+        <section id="page-solver" class="page">
+            <div class="page-inner">
+                <h2>Solver</h2>
+                <p class="subtitle" id="solver-subtitle">Configure and solve for optimal dart strategy.</p>
+
+                <div class="two-col">
+                    <!-- Canvas column -->
+                    <div class="canvas-wrap">
+                        <canvas id="solver-canvas" width="600" height="600"></canvas>
+                    </div>
+
+                    <!-- Controls column -->
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <h3>Game Settings</h3>
+                            <label class="field">
+                                <span>Game Mode</span>
+                                <select id="game-mode">
+                                    <option value="finishOnDouble">Finish on Double</option>
+                                    <option value="finishOnAny">Finish on Any</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>State (points remaining)</span>
+                                <input type="number" id="game-state" min="1" max="501" value="501">
+                            </label>
+                        </div>
+
+                        <div class="control-group">
+                            <h3>Solver</h3>
+                            <label class="field">
+                                <span>Solver Type</span>
+                                <select id="solver-type">
+                                    <option value="minThrows">Minimize Throws (DP)</option>
+                                    <option value="maxPoints">Maximize Points (Greedy)</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Aim Samples</span>
+                                <input type="number" id="aim-samples" min="100" max="50000" value="5000">
+                            </label>
+                            <button id="btn-solve" class="btn">Solve</button>
+                        </div>
+
+                        <div class="control-group">
+                            <h3>Results</h3>
+                            <div id="solve-results" class="info-box">
+                                <p class="muted">Press Solve to compute the optimal strategy.</p>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h3>Visualization</h3>
+                            <label class="toggle-label">
+                                <input type="checkbox" id="show-heatmap">
+                                <span>Show Heatmap</span>
+                            </label>
+                            <label class="field" id="heatmap-res-field" style="display:none">
+                                <span>Heatmap Resolution</span>
+                                <select id="heatmap-resolution">
+                                    <option value="30">30 × 30 (fast)</option>
+                                    <option value="50" selected>50 × 50</option>
+                                    <option value="100">100 × 100 (slow)</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="overlay hidden">
+        <div class="spinner"></div>
+        <p id="loading-message">Computing...</p>
+    </div>
+
+    <script src="darts_wasm.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
