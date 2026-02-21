@@ -29,6 +29,12 @@ jobs:
       - name: Build WASM
         run: bash build_wasm.sh
 
+      - name: Install Doxygen
+        run: sudo apt-get install -y doxygen graphviz
+
+      - name: Build Docs
+        run: doxygen doxygen.conf && cp -r build/docs/html src/web/docs
+
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
