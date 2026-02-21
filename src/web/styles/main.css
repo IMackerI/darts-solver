@@ -312,6 +312,38 @@ body { display: flex; }
     border-radius: var(--radius-sm);
 }
 
+/* ===== Canvas toolbar (top-right overlay) ===== */
+.canvas-toolbar {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    z-index: 2;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.toggle-label--inline {
+    background: rgba(19,19,21,.72);
+    backdrop-filter: blur(6px);
+    border: 1px solid var(--border-light);
+    border-radius: 20px;
+    padding: 5px 12px 5px 9px;
+    font-size: .78rem;
+    font-weight: 600;
+    letter-spacing: .02em;
+    color: var(--text-muted);
+    margin-bottom: 0;
+    transition: border-color .15s, color .15s;
+}
+.toggle-label--inline:has(input:checked) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+.toggle-label--inline input[type="checkbox"] {
+    width: 13px;
+    height: 13px;
+}
+
 /* ===== State navigation arrows ===== */
 .state-nav {
     display: flex;

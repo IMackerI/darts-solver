@@ -126,6 +126,12 @@
                 <div class="two-col">
                     <!-- Canvas column -->
                     <div class="canvas-wrap">
+                        <div class="canvas-toolbar">
+                            <label class="toggle-label toggle-label--inline">
+                                <input type="checkbox" id="show-heatmap">
+                                <span>Heatmap</span>
+                            </label>
+                        </div>
                         <canvas id="solver-canvas" width="700" height="700"></canvas>
                     </div>
 
@@ -175,10 +181,6 @@
 
                         <div class="control-group">
                             <h3><span class="cg-icon">⊞</span>Visualization</h3>
-                            <label class="toggle-label">
-                                <input type="checkbox" id="show-heatmap">
-                                <span>Show Heatmap</span>
-                            </label>
                             <label class="field" id="heatmap-res-field" style="display:none">
                                 <span>Heatmap Resolution</span>
                                 <select id="heatmap-resolution">
