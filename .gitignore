@@ -1,6 +1,7 @@
 .cache/
 build/
 *.out
+!src/web/target.out
 build_wasm/
 src/web/darts_wasm.js
 src/web/darts_wasm.wasm
