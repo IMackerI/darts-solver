@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,6 +10,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/main.css">
 </head>
+
 <body>
     <!-- Sidebar Navigation -->
     <nav id="sidebar">
@@ -18,7 +20,8 @@
         </div>
         <ul class="nav-links">
             <li><a href="#/" class="nav-link active" data-page="landing"><span class="nav-icon">⌂</span>Home</a></li>
-            <li><a href="#/calibrate" class="nav-link" data-page="calibration"><span class="nav-icon">⊕</span>Calibration</a></li>
+            <li><a href="#/calibrate" class="nav-link" data-page="calibration"><span
+                        class="nav-icon">⊕</span>Calibration</a></li>
             <li><a href="#/solve" class="nav-link" data-page="solver"><span class="nav-icon">◉</span>Solver</a></li>
         </ul>
         <div class="sidebar-footer">
@@ -65,9 +68,12 @@
                 <div class="info-section">
                     <h3>How it works</h3>
                     <ul>
-                        <li><strong>Your accuracy</strong> is modelled as a 2D Gaussian distribution estimated from your calibration shots.</li>
-                        <li><strong>Dynamic programming</strong> finds the aim point that minimises expected throws for any state.</li>
-                        <li><strong>Heatmaps</strong> visualise expected throws or expected points across every possible aim point.</li>
+                        <li><strong>Your accuracy</strong> is modelled as a 2D Gaussian distribution estimated from your
+                            calibration shots.</li>
+                        <li><strong>Dynamic programming</strong> finds the aim point that minimises expected throws for
+                            any state.</li>
+                        <li><strong>Heatmaps</strong> visualise expected throws or expected points across every possible
+                            aim point.</li>
                     </ul>
                 </div>
             </div>
@@ -114,10 +120,52 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="instructions-box">
+                    <h3>How to Calibrate</h3>
+                    <div class="instructions-content">
+                        <h4>What is calibration?</h4>
+                        <p>
+                            Calibration measures your throwing accuracy.
+                            We assume you are aiming at the bull's-eye. Based on where the darts actually land,
+                            the solver estimates a distribution. Currently the solver models your throws as
+                            a <strong>2D Gaussian (normal) distribution</strong> by estimating your offset (mean) and
+                            the spread (covariance matrix) of that distribution.
+                        </p>
+
+                        <h4>Step-by-step</h4>
+                        <ol>
+                            <li><strong>Aim at the bull's-eye.</strong> Every throw should be aimed at the exact center
+                                of the board.</li>
+                            <li><strong>Click where your dart lands.</strong> Click the corresponding spot on the
+                                dartboard canvas. A yellow dot appears for each recorded shot.</li>
+                            <li><strong>Repeat 10–30+ times.</strong> More shots give a better estimate. At least 3 are
+                                required, but 15+ is recommended for accuracy.</li>
+                            <li><strong>Click "Estimate Distribution"</strong> to compute your covariance matrix. The
+                                result shows σ<sub>x</sub> and σ<sub>y</sub> (standard deviations in mm) and the full
+                                covariance.</li>
+                            <li><strong>And that's it!</strong> The solver has internally stored your calibration data
+                                and is ready to use it in the solver.</li>
+                        </ol>
+
+                        <h4>Tips for better results</h4>
+                        <ul>
+                            <li>Throw naturally — don't try to be extra careful. The solver needs your <em>real</em>
+                                accuracy.</li>
+                            <li>If you missclick, use <strong>Undo Last</strong> to remove the most recent shot.</li>
+                            <li>You can <strong>Export</strong> your calibration data as JSON and
+                                <strong>Import</strong> it later, so you don't need to re-calibrate each session.</li>
+                            <li>The distribution is automatically saved in your browser's local storage.</li>
+                        </ul>
+
+                        <h4>What the numbers mean</h4>
+                        <p><strong>σ<sub>x</sub></strong> and <strong>σ<sub>y</sub></strong> are standard deviations in
+                            millimetres. The <strong>covariance matrix</strong> [a, b, c, d] captures both the spread
+                            and any correlation between horizontal and vertical errors.</p>
+                    </div>
+                </div>
             </div>
         </section>
-
-        <!-- Solver Page -->
         <section id="page-solver" class="page">
             <div class="page-inner page-inner--wide">
                 <h2>Solver</h2>
@@ -149,9 +197,11 @@
                             <label class="field">
                                 <span>State (points remaining)</span>
                                 <div class="state-nav">
-                                    <button id="btn-state-prev" class="btn btn-secondary btn-arrow" title="Previous state (←)">◀</button>
+                                    <button id="btn-state-prev" class="btn btn-secondary btn-arrow"
+                                        title="Previous state (←)">◀</button>
                                     <input type="number" id="game-state" min="1" max="501" value="501">
-                                    <button id="btn-state-next" class="btn btn-secondary btn-arrow" title="Next state (→)">▶</button>
+                                    <button id="btn-state-next" class="btn btn-secondary btn-arrow"
+                                        title="Next state (→)">▶</button>
                                 </div>
                             </label>
                         </div>
@@ -192,6 +242,71 @@
                         </div>
                     </div>
                 </div>
+
+                <div class="instructions-box">
+                    <h3>How to Use the Solver</h3>
+                    <div class="instructions-content">
+                        <h4>Game Settings</h4>
+                        <ul>
+                            <li><strong>Game Mode:</strong> "Finish on Double" is standard darts (x01) — you must hit a
+                                double to check out. "Finish on Any" allows finishing on any scoring segment.</li>
+                            <li><strong>State:</strong> The number of points remaining. For example, in a 501 game you
+                                start at state 501. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> arrow keys to step
+                                through states.</li>
+                        </ul>
+
+                        <h4>Solver Types</h4>
+                        <ul>
+                            <li>
+                                <strong>Minimize Throws (DP):</strong> Uses dynamic programming to find the aim point
+                                that minimizes the <em>expected number of throws</em> to reach 0. Best for states ≤ 1000
+                                (higher values are too slow). This is the strategic solver for real games.
+                                <ul><li>Use this setting to find out the best aiming spots for a precise game scenario.</li></ul>
+                            </li>
+                            <li>
+                                <strong>Maximize Points (Greedy):</strong> A simpler greedy solver that maximizes the
+                                expected points per throw, ignoring future states. Works for any state value. Useful for
+                                understanding raw scoring potential.
+                                <ul><li>You can use this with high points remaining to see what is the best scoring spot for you in general.</li></ul>
+                            </li>
+                        </ul>
+
+                        <h4>Reading the Results</h4>
+                        <ul>
+                            <li>The <strong>red crosshair</strong> on the board shows the computed optimal aim point.
+                            </li>
+                            <li><strong>Expected throws/points</strong> tells you the average outcome given your
+                                accuracy distribution.</li>
+                            <li><strong>Aim Samples</strong> controls how many candidate aim points are tested. Higher =
+                                more accurate but slower. 5000 is a good default.</li>
+                        </ul>
+
+                        <h4>Heatmap</h4>
+                        <p>Toggle the heatmap to see how the expected outcome varies across <em>every</em> possible aim
+                            point:</p>
+                        <ul>
+                            <li><strong>Minimize Throws:</strong> Uses a turbo colour scale (blue = best, red = worst).
+                                Values are shown as "throws above the optimum" on a logarithmic scale, capped at +50.
+                            </li>
+                            <li><strong>Maximize Points:</strong> Uses a linear red-to-green scale (green = highest
+                                expected points).</li>
+                            <li>Increase the <strong>resolution</strong> (50×50 → 100×100) for a smoother picture, at
+                                the cost of computation time.</li>
+                        </ul>
+
+                        <h4>Keyboard shortcuts</h4>
+                        <table class="shortcut-table">
+                            <tr>
+                                <td><kbd>←</kbd></td>
+                                <td>Previous state (−1) and auto-solve</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>→</kbd></td>
+                                <td>Next state (+1) and auto-solve</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
             </div>
         </section>
     </main>
@@ -205,4 +320,5 @@
     <script src="darts_wasm.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
+
 </html>

@@ -501,6 +501,48 @@ select:focus, input[type="number"]:focus {
 .info-box .result-line { margin-bottom: 5px; }
 .info-box .value { color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
 
+/* ===== Instructions Box ===== */
+.instructions-box {
+    margin-top: 20px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+}
+.instructions-box h3 {
+    color: var(--yellow);
+    font-size: .95rem;
+    margin-bottom: 12px;
+}
+.instructions-content {
+    font-size: .88rem;
+    line-height: 1.65;
+    color: var(--text-muted);
+}
+.instructions-content h4 {
+    color: var(--text);
+    margin: 14px 0 6px;
+    font-size: .92rem;
+}
+.instructions-content h4:first-child { margin-top: 0; }
+.instructions-content p { margin-bottom: 8px; }
+.instructions-content ul,
+.instructions-content ol { padding-left: 20px; margin-bottom: 8px; }
+.instructions-content li { margin-bottom: 4px; }
+.instructions-content li strong { color: var(--text); }
+.instructions-content kbd {
+    display: inline-block;
+    padding: 1px 6px;
+    font-size: .8rem;
+    font-family: inherit;
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+}
+.shortcut-table { border-collapse: collapse; margin-top: 6px; }
+.shortcut-table td { padding: 3px 12px 3px 0; }
+
 /* ===== Loading Overlay ===== */
 .overlay {
     position: fixed;
