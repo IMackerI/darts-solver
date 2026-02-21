@@ -265,7 +265,7 @@ export class DartboardRenderer {
     }
 
     /**
-     * Max-points heatmap: linear scaling, higher = green, lower = red.
+     * Max-points heatmap: linear scaling with turbo colormap, higher = blue, lower = red.
      */
     _drawHeatmapLinear(grid, gridBounds, rows, cols) {
         let lo = Infinity, hi = -Infinity;
@@ -286,11 +286,10 @@ export class DartboardRenderer {
                 const v = grid[r][c];
                 if (v >= 1e8) continue;
 
-                let t = (v - lo) / (hi - lo); // 0 = worst, 1 = best
+                // Higher value = better, invert so best → t=0 → blue in turbo
+                let t = 1 - (v - lo) / (hi - lo);
                 t = Math.pow(t, 0.6);
-
-                const hue = t * 120; // 0 (red) → 120 (green)
-                const lightness = 35 + t * 20;
+                const [rr, gg, bb] = turboColor(t);
 
                 const tl = this.toCanvas(
                     gridBounds.min.x + c / cols * (gridBounds.max.x - gridBounds.min.x),
@@ -301,7 +300,7 @@ export class DartboardRenderer {
                     gridBounds.min.y + r / rows * (gridBounds.max.y - gridBounds.min.y)
                 );
 
-                ctx.fillStyle = `hsla(${hue}, 100%, ${lightness}%, 0.85)`;
+                ctx.fillStyle = `rgba(${rr},${gg},${bb},0.7)`;
                 ctx.fillRect(tl.x, tl.y, br.x - tl.x, br.y - tl.y);
             }
         }
@@ -369,6 +368,11 @@ export class DartboardRenderer {
 
     /** Render board outline + optional overlays. */
     render({ shots = [], aimPoint = null, heatmap = null, heatmapBounds = null, invertColors = false } = {}) {
+        // Cache for hitTest
+        this._heatmap = heatmap;
+        this._heatmapBounds = heatmapBounds;
+        this._invertColors = invertColors;
+
         this.clear();
         const hasHeatmap = heatmap != null;
         if (!hasHeatmap) {
@@ -384,3 +388,41 @@ export class DartboardRenderer {
         }
     }
 }
+
+/**
+ * Look up the heatmap grid value at canvas pixel (px, py).
+ * Returns null when no heatmap is loaded or point is outside/masked.
+ */
+// Expose as a method on the prototype so we can call renderer.heatmapValueAt(px,py)
+DartboardRenderer.prototype.heatmapValueAt = function(px, py) {
+    const grid   = this._heatmap;
+    const bounds = this._heatmapBounds;
+    if (!grid || !bounds) return null;
+
+    const rows = grid.length;
+    const cols = rows > 0 ? grid[0].length : 0;
+    if (rows === 0 || cols === 0) return null;
+
+    // px,py are CSS pixels; canvas may be scaled by devicePixelRatio or CSS
+    const rect  = this.canvas.getBoundingClientRect();
+    const scaleX = this.canvas.width  / rect.width;
+    const scaleY = this.canvas.height / rect.height;
+    const cx = px * scaleX;
+    const cy = py * scaleY;
+
+    // Convert canvas px → board mm
+    const board = this.toBoard(cx, cy);
+
+    // Convert board mm → grid indices
+    const bw = bounds.max.x - bounds.min.x;
+    const bh = bounds.max.y - bounds.min.y;
+    const col = Math.floor((board.x - bounds.min.x) / bw * cols);
+    const row = Math.floor((board.y - bounds.min.y) / bh * rows);  // row 0 = y_min (bottom)
+
+    if (col < 0 || col >= cols || row < 0 || row >= rows) return null;
+
+    const v = grid[row][col];
+    const MASK_THRESHOLD = this._invertColors ? 1e8 : 1000;
+    if (v <= 0 || v > MASK_THRESHOLD) return null;
+    return v;
+};

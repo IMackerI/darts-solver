@@ -24,6 +24,7 @@
             <li><a href="#/calibrate" class="nav-link" data-page="calibration"><span
                         class="nav-icon">⊕</span>Calibration</a></li>
             <li><a href="#/solve" class="nav-link" data-page="solver"><span class="nav-icon">◉</span>Solver</a></li>
+            <li><a href="docs/index.html" class="nav-link" target="_blank" rel="noopener"><span class="nav-icon">📖</span>Docs</a></li>
         </ul>
         <div class="sidebar-footer">
             <div id="wasm-status" class="status loading">Loading WASM…</div>
@@ -318,6 +319,9 @@
         <div class="spinner"></div>
         <p id="loading-message">Computing...</p>
     </div>
+
+    <!-- Heatmap tooltip -->
+    <div id="heatmap-tooltip" class="heatmap-tooltip hidden"></div>
 
     <script src="darts_wasm.js"></script>
     <script type="module" src="js/main.js"></script>

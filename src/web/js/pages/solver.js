@@ -52,6 +52,12 @@ export function mount(parsedBeds, parsedBounds) {
         document.getElementById('btn-state-prev').addEventListener('click', (e) => { e.target.blur(); _stepState(-1); }, sig);
         document.getElementById('btn-state-next').addEventListener('click', (e) => { e.target.blur(); _stepState(+1); }, sig);
         document.addEventListener('keydown', _onKeyDown, sig);
+
+        // Heatmap value tooltip on hover
+        const solverCanvas = document.getElementById('solver-canvas');
+        solverCanvas.addEventListener('mousemove', _onCanvasMouseMove, sig);
+        solverCanvas.addEventListener('mouseleave', _onCanvasMouseLeave, sig);
+
         for (const id of ['game-mode', 'game-state', 'solver-type', 'aim-samples']) {
             document.getElementById(id).addEventListener('change', (e) => { e.target.blur(); _syncFormToState(); }, sig);
         }
@@ -141,6 +147,39 @@ function _onKeyDown(e) {
         e.preventDefault();
         _stepState(+1);
     }
+}
+
+/* --- heatmap tooltip --- */
+
+const _tooltip = () => document.getElementById('heatmap-tooltip');
+
+function _onCanvasMouseMove(e) {
+    const tip = _tooltip();
+    if (!cachedHeatmap) { tip.classList.add('hidden'); return; }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const px = e.clientX - rect.left;
+    const py = e.clientY - rect.top;
+    const val = renderer.heatmapValueAt(px, py);
+
+    if (val === null) {
+        tip.classList.add('hidden');
+        return;
+    }
+
+    const solverType = document.getElementById('solver-type').value;
+    const label = solverType === 'maxPoints'
+        ? `${val.toFixed(2)} pts`
+        : `${val.toFixed(2)} throws`;
+
+    tip.textContent = label;
+    tip.style.left = e.clientX + 'px';
+    tip.style.top  = e.clientY + 'px';
+    tip.classList.remove('hidden');
+}
+
+function _onCanvasMouseLeave() {
+    _tooltip().classList.add('hidden');
 }
 
 /* --- solve --- */
