@@ -33,7 +33,7 @@ jobs:
         run: sudo apt-get install -y doxygen graphviz
 
       - name: Build Docs
-        run: doxygen doxygen.conf && cp -r build/docs/html src/web/docs
+        run: doxygen doxygen.conf
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
