@@ -17,10 +17,10 @@ void try_avg_dist(NormalDistribution* dist, int NUM_SAMPLE_ITERATIONS = 10000) {
     std::cout << "Average distance from mean: " << avg_dist << std::endl;
 }
 
-void print_results(Solver &solver, Game &game, int MAX_DARTS_STATE = 101, size_t GRID_HEIGHT = 100, size_t GRID_WIDTH = 100) {
+void print_results(SolverMinThrows &solver, int MAX_DARTS_STATE = 101, size_t GRID_HEIGHT = 100, size_t GRID_WIDTH = 100) {
 
-    HeatMapSolver heat_map_solver(game, GRID_HEIGHT, GRID_WIDTH);
-    auto [min_point, max_point] = game.get_target_bounds();
+    HeatMapVisualizer heat_map_solver(solver, GRID_HEIGHT, GRID_WIDTH);
+    auto [min_point, max_point] = solver.get_game().get_target_bounds();
     
     for (int state = 1; state <= MAX_DARTS_STATE; ++state) {
         auto [score, aim] = solver.solve(state);
@@ -49,8 +49,8 @@ int main() {
     try_avg_dist(&dist);
     Target target("target.out");
     GameFinishOnDouble game(target, dist);
-    Solver solver(game, 10000);
+    SolverMinThrows solver(game, 10000);
 
-    print_results(solver, game);
+    print_results(solver);
     return 0;
 }

@@ -1,4 +1,5 @@
 #include "Solver.h"
+#include "Game.h"
 
 #include <utility>
 #include <vector>
@@ -22,9 +23,9 @@ std::vector<Vec2> Solver::sample_aims_() const {
     return aims;
 }
 
-Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
+SolverMinThrows::Score SolverMinThrows::solve_aim(Game::State s, Vec2 aim) {
     auto states = game_.throw_at(aim, s);
-    Solver::Score expected = 0;
+    SolverMinThrows::Score expected = 0;
     double same_state_prob = 0;
 
     for (const auto& [state, probability] : states) {
@@ -32,7 +33,7 @@ Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
             same_state_prob += probability;
             continue;
         }
-        Solver::Score state_score = solve(state).first;
+        SolverMinThrows::Score state_score = solve(state).first;
 
         if (!winable_.contains(state)) {
             same_state_prob += probability;
@@ -51,7 +52,7 @@ Solver::Score Solver::solve_aim(Game::State s, Vec2 aim) {
     return expected;
 }
 
-std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
+std::pair<SolverMinThrows::Score, Vec2> SolverMinThrows::solve(Game::State s) {
     if (s == 0) {
         winable_.insert(0);
         return {0.0, Vec2{0.0, 0.0}};
@@ -61,11 +62,11 @@ std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
         return memoization_[s];
     }
 
-    std::pair<Solver::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+    std::pair<SolverMinThrows::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
     bool is_winable = false;
 
     for (const auto& aim : sample_aims_()) {
-        Solver::Score score = solve_aim(s, aim);
+        SolverMinThrows::Score score = solve_aim(s, aim);
         if (score < best_score.first) {
             best_score = {score, aim};
         }
@@ -80,11 +81,36 @@ std::pair<Solver::Score, Vec2> Solver::solve(Game::State s) {
     return best_score;
 }
 
-[[nodiscard]]  HeatMapSolver::HeatMap HeatMapSolver::heat_map(Game::State s) {
+MaxPointsSolver::Score MaxPointsSolver::solve_aim(Game::State s, Vec2 aim) {
+    auto states = game_.throw_at(aim, s);
+    MaxPointsSolver::Score expected = 0;
+
+    for (const auto& [state, probability] : states) {
+        Game::StateDifference diff = s - state;
+        expected += diff * probability;
+    }
+
+    return expected;
+}
+
+std::pair<MaxPointsSolver::Score, Vec2> MaxPointsSolver::solve(Game::State s) {
+    std::pair<MaxPointsSolver::Score, Vec2> best_score = {MaxPointsSolver::LOWEST_SCORE, Vec2{0.0, 0.0}};
+
+    for (const auto& aim : Solver::sample_aims_()) {
+        MaxPointsSolver::Score score = solve_aim(s, aim);
+        if (score > best_score.first) {
+            best_score = {score, aim};
+        }
+    }
+
+    return best_score;
+}
+
+[[nodiscard]] HeatMapVisualizer::HeatMap HeatMapVisualizer::heat_map(Game::State s) {
     if (heat_map_memo_.contains(s)) {
         return heat_map_memo_[s];
     }
-    HeatMap heat_map(grid_height_, std::vector<Solver::Score>(grid_width_, 0.0));
+    HeatMap heat_map(grid_height_, std::vector<typename SolverMinThrows::Score>(grid_width_, 0.0));
 
     auto [min_point, max_point] = target_bounds_;
 
