@@ -20,6 +20,7 @@ export function mount(parsedBeds, parsedBounds) {
     bounds = parsedBounds;
 
     const canvas = document.getElementById('solver-canvas');
+    _resizeCanvas(canvas);
     renderer = new DartboardRenderer(canvas);
     renderer.setBeds(beds, bounds);
     renderer.render();
@@ -42,6 +43,9 @@ export function mount(parsedBeds, parsedBounds) {
         document.getElementById('btn-solve').addEventListener('click', _onSolve, sig);
         document.getElementById('show-heatmap').addEventListener('change', _onHeatmapToggle, sig);
         document.getElementById('heatmap-resolution').addEventListener('change', _onResChange, sig);
+        document.getElementById('btn-state-prev').addEventListener('click', () => _stepState(-1), sig);
+        document.getElementById('btn-state-next').addEventListener('click', () => _stepState(+1), sig);
+        document.addEventListener('keydown', _onKeyDown, sig);
         for (const id of ['game-mode', 'game-state', 'solver-type', 'aim-samples']) {
             document.getElementById(id).addEventListener('change', _syncFormToState, sig);
         }
@@ -89,6 +93,32 @@ function _syncFormToState() {
 function _toggleHeatmapRes() {
     const show = document.getElementById('show-heatmap').checked;
     document.getElementById('heatmap-res-field').style.display = show ? '' : 'none';
+}
+
+/* --- state navigation --- */
+
+function _stepState(delta) {
+    const input = document.getElementById('game-state');
+    const cur = parseInt(input.value, 10) || 0;
+    const next = Math.max(1, cur + delta);
+    input.value = next;
+    _syncFormToState();
+    _onSolve();
+}
+
+function _onKeyDown(e) {
+    // Only act when solver page is visible and no input is focused
+    const active = document.activeElement;
+    const isInput = active && (active.tagName === 'INPUT' || active.tagName === 'SELECT' || active.tagName === 'TEXTAREA');
+    if (isInput) return;
+
+    if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        _stepState(-1);
+    } else if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        _stepState(+1);
+    }
 }
 
 /* --- solve --- */
@@ -220,15 +250,33 @@ async function _onResChange() {
     }
 }
 
-/* --- loading overlay --- */
+/* --- loading overlay (with 500ms grace period) --- */
+
+let _loadingTimer = null;
 
 function _showLoading(msg) {
     document.getElementById('loading-message').textContent = msg;
-    document.getElementById('loading-overlay').classList.remove('hidden');
+    // Only show overlay if the operation takes longer than 500ms
+    clearTimeout(_loadingTimer);
+    _loadingTimer = setTimeout(() => {
+        document.getElementById('loading-overlay').classList.remove('hidden');
+    }, 500);
 }
 function _hideLoading() {
+    clearTimeout(_loadingTimer);
+    _loadingTimer = null;
     document.getElementById('loading-overlay').classList.add('hidden');
 }
 function _nextFrame() {
     return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+}
+
+/** Size the canvas internal resolution to match its CSS display size. */
+function _resizeCanvas(canvas) {
+    const wrap = canvas.parentElement;
+    const maxW = wrap.clientWidth - 24;
+    const maxH = wrap.clientHeight - 24;
+    const size = Math.max(400, Math.min(maxW, maxH));
+    canvas.width = size;
+    canvas.height = size;
 }

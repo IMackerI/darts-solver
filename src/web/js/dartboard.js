@@ -260,11 +260,11 @@ export class DartboardRenderer {
 
                 const tl = this.toCanvas(
                     gridBounds.min.x + c / cols * (gridBounds.max.x - gridBounds.min.x),
-                    gridBounds.max.y - r / rows * (gridBounds.max.y - gridBounds.min.y)
+                    gridBounds.min.y + (r + 1) / rows * (gridBounds.max.y - gridBounds.min.y)
                 );
                 const br = this.toCanvas(
                     gridBounds.min.x + (c + 1) / cols * (gridBounds.max.x - gridBounds.min.x),
-                    gridBounds.max.y - (r + 1) / rows * (gridBounds.max.y - gridBounds.min.y)
+                    gridBounds.min.y + r / rows * (gridBounds.max.y - gridBounds.min.y)
                 );
 
                 ctx.fillStyle = `hsla(${hue}, 100%, ${lightness}%, 0.85)`;
@@ -318,11 +318,11 @@ export class DartboardRenderer {
 
                 const tl = this.toCanvas(
                     gridBounds.min.x + c / cols * (gridBounds.max.x - gridBounds.min.x),
-                    gridBounds.max.y - r / rows * (gridBounds.max.y - gridBounds.min.y)
+                    gridBounds.min.y + (r + 1) / rows * (gridBounds.max.y - gridBounds.min.y)
                 );
                 const br = this.toCanvas(
                     gridBounds.min.x + (c + 1) / cols * (gridBounds.max.x - gridBounds.min.x),
-                    gridBounds.max.y - (r + 1) / rows * (gridBounds.max.y - gridBounds.min.y)
+                    gridBounds.min.y + r / rows * (gridBounds.max.y - gridBounds.min.y)
                 );
 
                 ctx.fillStyle = `rgba(${rr},${gg},${bb},0.7)`;

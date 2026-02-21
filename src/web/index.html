@@ -66,14 +66,14 @@
 
         <!-- Calibration Page -->
         <section id="page-calibration" class="page">
-            <div class="page-inner">
+            <div class="page-inner page-inner--wide">
                 <h2>Calibration</h2>
                 <p class="subtitle">Aim at the bull's-eye and click where your darts actually land.</p>
 
                 <div class="two-col">
                     <!-- Canvas column -->
                     <div class="canvas-wrap">
-                        <canvas id="calibration-canvas" width="600" height="600"></canvas>
+                        <canvas id="calibration-canvas" width="700" height="700"></canvas>
                     </div>
 
                     <!-- Controls column -->
@@ -110,14 +110,14 @@
 
         <!-- Solver Page -->
         <section id="page-solver" class="page">
-            <div class="page-inner">
+            <div class="page-inner page-inner--wide">
                 <h2>Solver</h2>
                 <p class="subtitle" id="solver-subtitle">Configure and solve for optimal dart strategy.</p>
 
                 <div class="two-col">
                     <!-- Canvas column -->
                     <div class="canvas-wrap">
-                        <canvas id="solver-canvas" width="600" height="600"></canvas>
+                        <canvas id="solver-canvas" width="700" height="700"></canvas>
                     </div>
 
                     <!-- Controls column -->
@@ -133,7 +133,11 @@
                             </label>
                             <label class="field">
                                 <span>State (points remaining)</span>
-                                <input type="number" id="game-state" min="1" max="501" value="501">
+                                <div class="state-nav">
+                                    <button id="btn-state-prev" class="btn btn-secondary btn-arrow" title="Previous state (←)">◀</button>
+                                    <input type="number" id="game-state" min="1" max="501" value="501">
+                                    <button id="btn-state-next" class="btn btn-secondary btn-arrow" title="Next state (→)">▶</button>
+                                </div>
                             </label>
                         </div>
 

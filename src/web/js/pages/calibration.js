@@ -15,6 +15,7 @@ export function mount(parsedBeds, parsedBounds) {
     bounds = parsedBounds;
 
     const canvas = document.getElementById('calibration-canvas');
+    _resizeCanvas(canvas);
     renderer = new DartboardRenderer(canvas);
     renderer.setBeds(beds, bounds);
     _redraw();
@@ -189,4 +190,14 @@ function _updateUI() {
     } else {
         info.innerHTML = '<p class="muted">Record at least 3 shots to estimate your distribution.</p>';
     }
+}
+
+/** Size the canvas internal resolution to match its CSS display size. */
+function _resizeCanvas(canvas) {
+    const wrap = canvas.parentElement;
+    const maxW = wrap.clientWidth - 24;
+    const maxH = wrap.clientHeight - 24;
+    const size = Math.max(400, Math.min(maxW, maxH));
+    canvas.width = size;
+    canvas.height = size;
 }
