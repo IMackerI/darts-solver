@@ -104,6 +104,12 @@ async function _onSolve() {
         alert('Invalid state value');
         return;
     }
+    // DP solver (minThrows) is O(state) and can hang/crash for large values
+    if (solverType === 'minThrows' && stateVal > 1000) {
+        alert('State values above 1000 are not supported for the DP solver (Minimize Throws).\n'
+            + 'Use Max Points solver for large state values, or pick a value ≤ 1000.');
+        return;
+    }
 
     _showLoading('Solving...');
 
@@ -193,8 +199,25 @@ async function _onHeatmapToggle() {
     }
 }
 
-function _onResChange() {
+async function _onResChange() {
     State.set('solver.heatmapResolution', parseInt(document.getElementById('heatmap-resolution').value, 10));
+
+    // Refresh heatmap immediately if it's currently shown
+    if (document.getElementById('show-heatmap').checked && State.get('solver.optimalAim')) {
+        const cov = _getCovariance() || [1600, 0, 0, 1600];
+        const gameMode   = document.getElementById('game-mode').value;
+        const stateVal   = parseInt(document.getElementById('game-state').value, 10);
+        const solverType = document.getElementById('solver-type').value;
+        const samples    = parseInt(document.getElementById('aim-samples').value, 10);
+        try {
+            await _computeHeatmap(stateVal, cov, gameMode, solverType, samples);
+            _renderBoard();
+        } catch (err) {
+            console.error(err);
+        } finally {
+            _hideLoading();
+        }
+    }
 }
 
 /* --- loading overlay --- */
