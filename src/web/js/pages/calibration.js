@@ -1,5 +1,6 @@
 /**
- * Calibration page — record shots, estimate distribution.
+ * @file calibration.js
+ * @brief Calibration page — record shots and estimate the 2D Gaussian throwing distribution.
  */
 import { DartboardRenderer } from '../dartboard.js';
 import * as State from '../state.js';
@@ -10,6 +11,11 @@ let bounds = null;
 let _mounted = false;
 const _abortCtrl = { current: null };
 
+/**
+ * Mount the calibration page: initialise the renderer and attach event listeners.
+ * @param {object[]} parsedBeds    Parsed bed array from target.js.
+ * @param {{min:{x,y},max:{x,y}}} parsedBounds  Bounding box from target.js.
+ */
 export function mount(parsedBeds, parsedBounds) {
     beds = parsedBeds;
     bounds = parsedBounds;
@@ -40,6 +46,7 @@ export function mount(parsedBeds, parsedBounds) {
     _updateUI();
 }
 
+/** Unmount the calibration page and remove all event listeners via AbortController. */
 export function unmount() {
     // AbortController removes all listeners at once
     _abortCtrl.current?.abort();
@@ -49,6 +56,10 @@ export function unmount() {
 
 /* --- event handlers --- */
 
+/**
+ * Handle a canvas click: convert pixel coords to dartboard mm and record a shot.
+ * @param {MouseEvent} e
+ */
 function _onCanvasClick(e) {
     const rect = e.target.getBoundingClientRect();
     // Account for CSS scaling (canvas may be displayed smaller than its resolution)
@@ -67,6 +78,7 @@ function _onCanvasClick(e) {
     _updateUI();
 }
 
+/** Remove the most recently recorded shot. */
 function _undo() {
     const shots = State.get('calibration.shots');
     if (shots.length === 0) return;
@@ -77,6 +89,7 @@ function _undo() {
     _updateUI();
 }
 
+/** Clear all recorded shots after user confirmation. */
 function _clear() {
     if (!confirm('Clear all shots?')) return;
     State.set('calibration.shots', []);
@@ -89,6 +102,10 @@ function _clear() {
 
 /* --- distribution estimation (pure JS, no WASM needed) --- */
 
+/**
+ * Estimate a 2D Gaussian distribution from the recorded shots using
+ * sample mean and covariance (Bessel-corrected).
+ */
 function _estimate() {
     const shots = State.get('calibration.shots');
     if (shots.length < 3) return;
@@ -119,6 +136,7 @@ function _estimate() {
 
 /* --- export / import --- */
 
+/** Export current calibration data as a timestamped JSON file download. */
 function _exportData() {
     const data = {
         version: '1.0',
@@ -135,6 +153,10 @@ function _exportData() {
     URL.revokeObjectURL(a.href);
 }
 
+/**
+ * Import calibration data from a JSON file selected via file input.
+ * @param {Event} e File input change event.
+ */
 function _importData(e) {
     const file = e.target.files[0];
     if (!file) return;
@@ -159,12 +181,14 @@ function _importData(e) {
 
 /* --- rendering --- */
 
+/** Redraw the calibration canvas with the current shot list. */
 function _redraw() {
     const shots = State.get('calibration.shots');
     renderer.render({ shots });
     renderer.drawAimCenter();
 }
 
+/** Refresh all calibration UI elements (button states, shot count, distribution info). */
 function _updateUI() {
     const shots = State.get('calibration.shots');
     const cov   = State.get('calibration.covariance');

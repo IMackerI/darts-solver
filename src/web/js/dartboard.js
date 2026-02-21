@@ -1,5 +1,6 @@
 /**
- * Dartboard renderer — draws bed polygons, shots, aim markers, and heatmaps
+ * @file dartboard.js
+ * @brief Dartboard renderer — draws bed polygons, shots, aim markers, and heatmaps
  * on an HTML Canvas element.
  *
  * Coordinate system:
@@ -49,7 +50,9 @@ function turboColor(t) {
 }
 
 export class DartboardRenderer {
-    /** @param {HTMLCanvasElement} canvas */
+    /**
+     * @param {HTMLCanvasElement} canvas The canvas element to render into.
+     */
     constructor(canvas) {
         this.canvas = canvas;
         this.ctx = canvas.getContext('2d');
@@ -65,7 +68,12 @@ export class DartboardRenderer {
 
     /* ---------- coordinate transforms ---------- */
 
-    /** Dartboard mm → canvas px */
+    /**
+     * Convert dartboard millimetre coordinates to canvas pixel coordinates.
+     * @param {number} bx X in mm (positive = right).
+     * @param {number} by Y in mm (positive = up).
+     * @returns {{x:number, y:number}}
+     */
     toCanvas(bx, by) {
         const { min, max } = this.bounds;
         const w = this.canvas.width  - 2 * this.padding;
@@ -83,7 +91,12 @@ export class DartboardRenderer {
         };
     }
 
-    /** Canvas px → dartboard mm */
+    /**
+     * Convert canvas pixel coordinates back to dartboard millimetre coordinates.
+     * @param {number} cx Pixel X.
+     * @param {number} cy Pixel Y.
+     * @returns {{x:number, y:number}}
+     */
     toBoard(cx, cy) {
         const { min, max } = this.bounds;
         const w = this.canvas.width  - 2 * this.padding;
@@ -103,8 +116,12 @@ export class DartboardRenderer {
 
     /* ---------- setup ---------- */
 
-    /** Load beds and bounds produced by target.js.
-     *  Expands bounds so number labels aren't clipped. */
+    /**
+     * Load parsed bed data and bounding box (from target.js).
+     * Expands bounds so the sector number labels are not clipped.
+     * @param {object[]} beds  Array of bed objects from parseTarget().
+     * @param {{min:{x,y},max:{x,y}}} bounds  Tight bounding box from computeBounds().
+     */
     setBeds(beds, bounds) {
         this.beds = beds;
         // Expand bounds to include number labels (~185 mm radius + text)
@@ -117,10 +134,15 @@ export class DartboardRenderer {
 
     /* ---------- drawing primitives ---------- */
 
+    /** Clear the entire canvas. */
     clear() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     }
 
+    /**
+     * Draw all scoring bed polygons.
+     * @param {boolean} [outlineOnly=false] When true, only draw outlines (used on top of the heatmap).
+     */
     drawBeds(outlineOnly = false) {
         const ctx = this.ctx;
         for (const bed of this.beds) {
@@ -142,6 +164,7 @@ export class DartboardRenderer {
         }
     }
 
+    /** Draw the sector number labels (1–20) around the outside of the board. */
     drawNumbers() {
         // Standard dartboard number order and positions
         const NUMBERS = [20,1,18,4,13,6,10,15,2,17,3,19,7,16,8,11,14,9,12,5];
@@ -164,6 +187,10 @@ export class DartboardRenderer {
         }
     }
 
+    /**
+     * Draw yellow dot markers for each recorded shot.
+     * @param {{x:number,y:number}[]} shots Array of dartboard-coordinate points.
+     */
     drawShots(shots) {
         const ctx = this.ctx;
         for (const s of shots) {
@@ -178,6 +205,12 @@ export class DartboardRenderer {
         }
     }
 
+    /**
+     * Draw a crosshair marker at a dartboard coordinate.
+     * @param {number} bx  X in mm.
+     * @param {number} by  Y in mm.
+     * @param {{color?:string, size?:number, label?:string}} [opts]
+     */
     drawCrosshair(bx, by, { color = '#ff4444', size = 12, label = '' } = {}) {
         const p = this.toCanvas(bx, by);
         const ctx = this.ctx;
@@ -203,6 +236,7 @@ export class DartboardRenderer {
         ctx.restore();
     }
 
+    /** Draw a faint crosshair at the board origin (0, 0) as a visual reference. */
     drawAimCenter() {
         // Faint crosshair at (0,0) showing where the user should aim
         this.drawCrosshair(0, 0, { color: 'rgba(78, 201, 176, 0.5)', size: 16, label: '' });

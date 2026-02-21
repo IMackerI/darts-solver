@@ -1,5 +1,6 @@
 /**
- * State manager — single global state object with subscriber notifications.
+ * @file state.js
+ * @brief State manager — single global state object with subscriber notifications.
  */
 const state = {
     calibration: {
@@ -29,6 +30,9 @@ export function subscribe(path, callback) {
     return () => _listeners[path].delete(callback);
 }
 
+/** Notify all subscribers for the given dot-path with its current value.
+ * @param {string} path
+ */
 function _notify(path) {
     const parts = path.split('.');
     const val = parts.reduce((o, k) => o?.[k], state);
@@ -52,6 +56,7 @@ export function set(path, value) {
 /* ---------- localStorage persistence ---------- */
 const STORAGE_KEY = 'darts-solver-state';
 
+/** Persist the serialisable parts of state to localStorage. */
 export function saveToStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -66,6 +71,7 @@ export function saveToStorage() {
     } catch { /* quota exceeded — ignore */ }
 }
 
+/** Restore previously persisted state from localStorage. Silently ignores missing or corrupted data. */
 export function loadFromStorage() {
     try {
         const raw = localStorage.getItem(STORAGE_KEY);

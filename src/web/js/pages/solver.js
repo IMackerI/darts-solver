@@ -1,5 +1,6 @@
 /**
- * Solver page — solve for optimal aim, show heatmap.
+ * @file solver.js
+ * @brief Solver page — solve for optimal aim point and display the strategy heatmap.
  */
 import { DartboardRenderer } from '../dartboard.js';
 import * as State from '../state.js';
@@ -15,6 +16,11 @@ const _abortCtrl = { current: null };
 let cachedHeatmap = null;
 let cachedHeatmapBounds = null;
 
+/**
+ * Mount the solver page: initialise the renderer, restore form state, and attach listeners.
+ * @param {object[]} parsedBeds    Parsed bed array from target.js.
+ * @param {{min:{x,y},max:{x,y}}} parsedBounds  Bounding box from target.js.
+ */
 export function mount(parsedBeds, parsedBounds) {
     beds = parsedBeds;
     bounds = parsedBounds;
@@ -54,6 +60,7 @@ export function mount(parsedBeds, parsedBounds) {
     _updateCalibrationWarning();
 }
 
+/** Unmount the solver page, remove listeners, and clear cached heatmap data. */
 export function unmount() {
     _abortCtrl.current?.abort();
     _abortCtrl.current = null;
@@ -64,12 +71,17 @@ export function unmount() {
 
 /* --- helpers --- */
 
+/**
+ * Return the calibration covariance matrix from state.
+ * @returns {number[]|null} Flat [a,b,c,d] 2×2 matrix, or null if not calibrated.
+ */
 function _getCovariance() {
     const cov = State.get('calibration.covariance');
     if (!cov) return null;
     return cov;
 }
 
+/** Show a warning in the subtitle if no calibration data is available. */
 function _updateCalibrationWarning() {
     const cov = _getCovariance();
     const sub = document.getElementById('solver-subtitle');
@@ -82,6 +94,7 @@ function _updateCalibrationWarning() {
     }
 }
 
+/** Read all solver form fields and sync their values into the app state. */
 function _syncFormToState() {
     State.set('solver.gameMode',    document.getElementById('game-mode').value);
     State.set('solver.currentState', parseInt(document.getElementById('game-state').value, 10));
@@ -90,6 +103,7 @@ function _syncFormToState() {
     State.saveToStorage();
 }
 
+/** Show or hide the heatmap resolution field based on the current toggle state. */
 function _toggleHeatmapRes() {
     const show = document.getElementById('show-heatmap').checked;
     document.getElementById('heatmap-res-field').style.display = show ? '' : 'none';
@@ -97,6 +111,10 @@ function _toggleHeatmapRes() {
 
 /* --- state navigation --- */
 
+/**
+ * Increment or decrement the current game state by delta and re-solve.
+ * @param {number} delta Positive or negative integer step.
+ */
 function _stepState(delta) {
     const input = document.getElementById('game-state');
     const cur = parseInt(input.value, 10) || 0;
@@ -106,6 +124,10 @@ function _stepState(delta) {
     _onSolve();
 }
 
+/**
+ * Handle arrow key presses to step the game state when not focused on an input.
+ * @param {KeyboardEvent} e
+ */
 function _onKeyDown(e) {
     // Only block arrows when typing in a text input
     const active = document.activeElement;
@@ -123,6 +145,10 @@ function _onKeyDown(e) {
 
 /* --- solve --- */
 
+/**
+ * Run the solver with current form values, optionally compute a heatmap,
+ * and display results on the board and in the results panel.
+ */
 async function _onSolve() {
     const cov = _getCovariance() || [1600, 0, 0, 1600]; // fallback default
     const gameMode   = document.getElementById('game-mode').value;
@@ -170,6 +196,14 @@ async function _onSolve() {
     }
 }
 
+/**
+ * Request a heatmap from the WASM solver and cache the result.
+ * @param {number} stateVal   Current game state.
+ * @param {number[]} cov      Flat 2×2 covariance.
+ * @param {string} gameMode
+ * @param {string} solverType
+ * @param {number} samples
+ */
 async function _computeHeatmap(stateVal, cov, gameMode, solverType, samples) {
     _showLoading('Generating heatmap...');
     await _nextFrame();
@@ -179,6 +213,7 @@ async function _computeHeatmap(stateVal, cov, gameMode, solverType, samples) {
     cachedHeatmapBounds = hm.bounds;
 }
 
+/** Re-render the solver canvas with the current aim point and cached heatmap. */
 function _renderBoard() {
     const aim = State.get('solver.optimalAim');
     const solverType = document.getElementById('solver-type').value;
@@ -191,6 +226,11 @@ function _renderBoard() {
     });
 }
 
+/**
+ * Populate the results panel with expected value and optimal aim coordinates.
+ * @param {{expectedValue:number, optimalAim:{x:number,y:number}}} result
+ * @param {string} solverType 'minThrows' | 'maxPoints'
+ */
 function _showResults(result, solverType) {
     const info = document.getElementById('solve-results');
     const label = solverType === 'maxPoints' ? 'Expected points' : 'Expected throws';
@@ -202,6 +242,7 @@ function _showResults(result, solverType) {
 
 /* --- heatmap toggle --- */
 
+/** Handle the heatmap toggle: compute and show, or clear, the heatmap overlay. */
 async function _onHeatmapToggle() {
     const on = document.getElementById('show-heatmap').checked;
     State.set('solver.showHeatmap', on);
@@ -234,6 +275,7 @@ async function _onHeatmapToggle() {
     }
 }
 
+/** Handle a change to the heatmap resolution selector: persist and refresh the heatmap. */
 async function _onResChange() {
     State.set('solver.heatmapResolution', parseInt(document.getElementById('heatmap-resolution').value, 10));
 
@@ -257,6 +299,10 @@ async function _onResChange() {
 
 /* --- loading overlay (CSS handles 500ms fade-in delay) --- */
 
+/**
+ * Show the loading overlay with a status message.
+ * @param {string} msg Message to display.
+ */
 function _showLoading(msg) {
     document.getElementById('loading-message').textContent = msg;
     const overlay = document.getElementById('loading-overlay');
@@ -266,9 +312,13 @@ function _showLoading(msg) {
     overlay.offsetHeight; // force reflow
     overlay.style.animation = '';
 }
+/** Hide the loading overlay. */
 function _hideLoading() {
     document.getElementById('loading-overlay').classList.add('hidden');
 }
+/** Returns a promise that resolves after two animation frames, allowing the DOM to repaint.
+ * @returns {Promise<void>}
+ */
 function _nextFrame() {
     return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
 }

@@ -1,8 +1,9 @@
 /**
- * WASM interface — thin wrapper around the Emscripten bindings.
+ * @file wasm.js
+ * @brief WASM interface — thin wrapper around the Emscripten bindings.
  *
  * Keeps WASM objects alive across calls and exposes promise-based helpers.
- * DartsModule is loaded via the non-module <script> tag in index.html,
+ * DartsModule is loaded via the non-module script tag in index.html,
  * so it lives on window.DartsModule.
  */
 
@@ -23,16 +24,27 @@ let _cachedSamples = null;
 
 /* ---- init ---- */
 
+/**
+ * Initialise the Emscripten WASM module.  Must be awaited before any other export.
+ * @returns {Promise<object>} The compiled module instance.
+ */
 export async function init() {
     // DartsModule is the factory placed on window by darts_wasm.js
     module = await DartsModule();
     return module;
 }
 
+/** Returns true if the WASM module has been initialised. @returns {boolean} */
 export function isReady() { return module !== null; }
 
 /* ---- target ---- */
 
+/**
+ * Fetch and load a target layout file into the WASM module.
+ * Re-creates all cached WASM objects when the file content changes.
+ * @param {string} [url='target.out'] URL of the target file to fetch.
+ * @returns {Promise<void>}
+ */
 export async function loadTarget(url = 'target.out') {
     const res = await fetch(url);
     if (!res.ok) throw new Error(`Failed to load target: ${res.statusText}`);
@@ -43,10 +55,14 @@ export async function loadTarget(url = 'target.out') {
     _target = new module.Target(text);
 }
 
+/** Returns the raw text content of the last successfully loaded target file.
+ * @returns {string|null}
+ */
 export function getTargetContent() { return _targetContent; }
 
 /* ---- build / rebuild game + solver ---- */
 
+/** Delete all cached WASM heap objects and reset change-detection keys. */
 function _cleanup() {
     _heatVis?.delete();  _heatVis = null;
     _solver?.delete();   _solver = null;

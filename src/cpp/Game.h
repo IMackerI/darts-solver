@@ -9,6 +9,11 @@
 #include <string>
 #include <limits>
 
+/**
+ * @defgroup game Game Rules and Targets
+ * @brief Game logic, scoring rules, and dartboard target definitions.
+ */
+
 class Target;
 
 struct HitData;

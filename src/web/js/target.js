@@ -1,4 +1,9 @@
 /**
+ * @file target.js
+ * @brief Parses target.out geometry files and computes bounding boxes for JS rendering.
+ */
+
+/**
  * Parse a target.out file into an array of bed objects for JS rendering.
  *
  * Format (per gen_target.py output):

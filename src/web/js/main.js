@@ -1,6 +1,6 @@
 /**
- * main.js — app entry point.
- * Handles routing, WASM init, and page lifecycle.
+ * @file main.js
+ * @brief App entry point — handles routing, WASM initialisation, and page lifecycle.
  */
 import * as State from './state.js';
 import * as Wasm  from './wasm.js';
@@ -18,7 +18,9 @@ const pages = {
     'calibrate': 'calibration',
     'solve':     'solver',
 };
-
+/** Returns the current route name derived from the URL hash.
+ * @returns {string} One of 'landing', 'calibration', 'solver'.
+ */
 function getRoute() {
     const hash = location.hash.replace(/^#\/?/, '');
     return pages[hash] ?? 'landing';
@@ -26,6 +28,10 @@ function getRoute() {
 
 let currentPage = null;
 
+/**
+ * Navigate to the route matching the current URL hash,
+ * unmounting the previous page and mounting the new one.
+ */
 function navigate() {
     const page = getRoute();
     if (page === currentPage) return;
@@ -52,6 +58,10 @@ function navigate() {
 
 /* ---------- init ---------- */
 
+/**
+ * Initialise the app: restore persisted state, start hash routing,
+ * and load the WebAssembly module + target file.
+ */
 async function init() {
     State.loadFromStorage();
 
