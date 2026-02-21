@@ -165,9 +165,11 @@ function _importData(e) {
         try {
             const data = JSON.parse(reader.result);
             if (!Array.isArray(data.shots)) throw new Error('Invalid format');
-            State.set('calibration.shots', data.shots);
-            if (data.covariance) State.set('calibration.covariance', data.covariance);
-            if (data.mean) State.set('calibration.mean', data.mean);
+            const existing = State.get('calibration.shots') || [];
+            State.set('calibration.shots', [...existing, ...data.shots]);
+            // Covariance is now stale — clear it so the user re-estimates
+            State.set('calibration.covariance', null);
+            State.set('calibration.mean', null);
             State.saveToStorage();
             _redraw();
             _updateUI();
