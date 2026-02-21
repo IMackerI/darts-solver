@@ -109,7 +109,7 @@ TEST(Integration, BasicSolverFunctionality) {
     NormalDistribution::covariance cov = {{{100, 0}, {0, 100}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 1000);  // 1000 sample points
+    SolverMinThrows solver(game, 1000);  // 1000 sample points
     
     // Test state 0 (already won)
     auto [score_0, aim_0] = solver.solve(0);
@@ -135,7 +135,7 @@ TEST(Integration, MonotonicityProperty) {
     NormalDistribution::covariance cov = {{{200, 0}, {0, 200}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 500);
+    SolverMinThrows solver(game, 500);
     
     std::vector<int> states = {20, 40, 60, 80, 100};
     std::vector<double> scores;
@@ -163,7 +163,7 @@ TEST(Integration, OptimalAimsWithinBounds) {
     NormalDistribution::covariance cov = {{{300, 0}, {0, 300}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 800);
+    SolverMinThrows solver(game, 800);
     
     auto bounds = game.get_target_bounds();
     
@@ -281,7 +281,7 @@ TEST(Integration, SolverConsistency) {
     NormalDistribution::covariance cov = {{{250, 0}, {0, 250}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 600);
+    SolverMinThrows solver(game, 600);
     
     int test_state = 40;
     
@@ -298,7 +298,7 @@ TEST(Integration, SolverConsistency) {
 }
 
 /**
- * Test: HeatMapSolver produces reasonable results
+ * Test: HeatMapVisualizer produces reasonable results with SolverMinThrows
  * Heat map should show variation across the target
  */
 TEST(Integration, HeatMapSolverVariation) {
@@ -307,8 +307,9 @@ TEST(Integration, HeatMapSolverVariation) {
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnDouble game(target, dist);
     
-    HeatMapSolver heat_solver(game, 20, 20, 500);  // 20x20 grid
-    auto heat_map = heat_solver.heat_map(50);
+    SolverMinThrows solver(game, 500);
+    HeatMapVisualizer heat_visualizer(solver, 20, 20);  // 20x20 grid
+    auto heat_map = heat_visualizer.heat_map(50);
     
     EXPECT_EQ(heat_map.size(), 20) << "Heat map should have correct height";
     EXPECT_EQ(heat_map[0].size(), 20) << "Heat map should have correct width";
@@ -344,8 +345,8 @@ TEST(Integration, DistributionVarianceEffect) {
     GameFinishOnAny game_accurate(target, dist_accurate);
     GameFinishOnAny game_inaccurate(target, dist_inaccurate);
     
-    Solver solver_accurate(game_accurate, 500);
-    Solver solver_inaccurate(game_inaccurate, 500);
+    SolverMinThrows solver_accurate(game_accurate, 500);
+    SolverMinThrows solver_inaccurate(game_inaccurate, 500);
     
     int test_state = 40;
     auto [score_accurate, aim_accurate] = solver_accurate.solve(test_state);
@@ -397,8 +398,8 @@ TEST(Integration, GameModeComparison) {
     GameFinishOnAny game_any(target, dist);
     GameFinishOnDouble game_double(target, dist);
     
-    Solver solver_any(game_any, 500);
-    Solver solver_double(game_double, 500);
+    SolverMinThrows solver_any(game_any, 500);
+    SolverMinThrows solver_double(game_double, 500);
     
     // Test for state 40 (can be finished with double 20)
     auto [score_any, aim_any] = solver_any.solve(40);
@@ -417,7 +418,7 @@ TEST(Integration, AimingAccuracyMatters) {
     NormalDistribution::covariance cov = {{{100, 0}, {0, 100}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 500);
+    SolverMinThrows solver(game, 500);
     
     int test_state = 50;
     
@@ -441,7 +442,7 @@ TEST(Integration, HighStateHandling) {
     NormalDistribution::covariance cov = {{{150, 0}, {0, 150}}};
     NormalDistributionQuadrature dist(cov, Vec2{0, 0});
     GameFinishOnAny game(target, dist);
-    Solver solver(game, 300);
+    SolverMinThrows solver(game, 300);
     
     int high_state = 150;
     auto [score, aim] = solver.solve(high_state);
@@ -450,4 +451,274 @@ TEST(Integration, HighStateHandling) {
     EXPECT_LT(score, 100.0) << "High state should still be solvable in reasonable time";
     EXPECT_FALSE(std::isnan(score)) << "Score should not be NaN";
     EXPECT_FALSE(std::isinf(score)) << "Score should not be infinite";
+}
+
+/**
+ * Test: MaxPointsSolver basic functionality
+ * Verifies that MaxPointsSolver returns reasonable expected scores
+ */
+TEST(MaxPointsSolver, BasicFunctionality) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{100, 0}, {0, 100}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 1000);
+    
+    // Solve for different states
+    auto [score_20, aim_20] = solver.solve(20);
+    auto [score_50, aim_50] = solver.solve(50);
+    auto [score_100, aim_100] = solver.solve(100);
+    
+    EXPECT_GT(score_20, 0.0) << "Should have positive expected score";
+    EXPECT_GT(score_50, 0.0) << "Should have positive expected score";
+    EXPECT_GT(score_100, 0.0) << "Should have positive expected score";
+    
+    // Expected points should be close to but not exceed the current state
+    // (small tolerance for numerical errors in probability integration)
+    EXPECT_LT(score_20, 25.0) << "Expected score should be reasonable for state 20";
+    EXPECT_LT(score_50, 55.0) << "Expected score should be reasonable for state 50";
+    EXPECT_LT(score_100, 110.0) << "Expected score should be reasonable for state 100";
+    
+    // Higher states should generally allow for higher expected scores
+    EXPECT_GE(score_50, score_20) << "Higher state should allow higher expected score";
+    EXPECT_GE(score_100, score_50) << "Higher state should allow higher expected score";
+}
+
+/**
+ * Test: MaxPointsSolver aims at highest value zones
+ * Should aim where expected score is highest
+ */
+TEST(MaxPointsSolver, AimsAtHighValueZones) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{50, 0}, {0, 50}}};  // Low variance (accurate)
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 800);
+    
+    auto [best_score, best_aim] = solver.solve(100);
+    
+    // Compute scores for aiming at different zones
+    double score_at_bull = solver.solve_aim(100, Vec2{0, 0});      // 50 points (double bull)
+    double score_at_20_ring = solver.solve_aim(100, Vec2{75, 0});  // 20 points
+    double score_at_double = solver.solve_aim(100, Vec2{160, 0});  // 40 points (double 20)
+    
+    // Best score should be at least as good as any specific zone
+    EXPECT_GE(best_score, score_at_20_ring) 
+        << "Optimal should be at least as good as 20 ring";
+    EXPECT_GE(best_score, score_at_bull - 1.0) 
+        << "Optimal should be close to bull or double ring";
+    EXPECT_GE(best_score, score_at_double - 1.0) 
+        << "Optimal should be close to bull or double ring";
+}
+
+/**
+ * Test: MaxPointsSolver consistency
+ * Should return same result when called multiple times
+ */
+TEST(MaxPointsSolver, Consistency) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{150, 0}, {0, 150}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 500);
+    
+    auto [score1, aim1] = solver.solve(50);
+    auto [score2, aim2] = solver.solve(50);
+    auto [score3, aim3] = solver.solve(50);
+    
+    EXPECT_DOUBLE_EQ(score1, score2) << "Should return consistent scores";
+    EXPECT_DOUBLE_EQ(score2, score3) << "Should return consistent scores";
+    EXPECT_DOUBLE_EQ(aim1.x, aim2.x) << "Should return consistent aims";
+    EXPECT_DOUBLE_EQ(aim1.y, aim2.y) << "Should return consistent aims";
+}
+
+/**
+ * Test: MaxPointsSolver with different variances
+ * More accurate players should have higher expected scores
+ */
+TEST(MaxPointsSolver, VarianceEffect) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov_accurate = {{{30, 0}, {0, 30}}};
+    NormalDistributionQuadrature dist_accurate(cov_accurate, Vec2{0, 0});
+    NormalDistribution::covariance cov_inaccurate = {{{300, 0}, {0, 300}}};
+    NormalDistributionQuadrature dist_inaccurate(cov_inaccurate, Vec2{0, 0});
+    
+    GameFinishOnAny game_accurate(target, dist_accurate);
+    GameFinishOnAny game_inaccurate(target, dist_inaccurate);
+    
+    MaxPointsSolver solver_accurate(game_accurate, 500);
+    MaxPointsSolver solver_inaccurate(game_inaccurate, 500);
+    
+    auto [score_accurate, aim_accurate] = solver_accurate.solve(100);
+    auto [score_inaccurate, aim_inaccurate] = solver_inaccurate.solve(100);
+    
+    EXPECT_GT(score_accurate, score_inaccurate)
+        << "More accurate player should score more points";
+}
+
+/**
+ * Test: MaxPointsSolver aims within bounds
+ * Optimal aim should be within or near target
+ */
+TEST(MaxPointsSolver, AimsWithinBounds) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200, 0}, {0, 200}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 600);
+    
+    auto bounds = game.get_target_bounds();
+    auto [score, aim] = solver.solve(100);
+    
+    EXPECT_GE(aim.x, bounds.min.x) << "Aim x should be within bounds";
+    EXPECT_LE(aim.x, bounds.max.x) << "Aim x should be within bounds";
+    EXPECT_GE(aim.y, bounds.min.y) << "Aim y should be within bounds";
+    EXPECT_LE(aim.y, bounds.max.y) << "Aim y should be within bounds";
+}
+
+/**
+ * Test: MaxPointsSolver vs SolverMinThrows comparison
+ * Greedy and DP solvers may aim at different points
+ */
+TEST(MaxPointsSolver, CompareWithMinThrows) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{100, 0}, {0, 100}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    
+    MaxPointsSolver greedy_solver(game, 500);
+    SolverMinThrows dp_solver(game, 500);
+    
+    auto [greedy_score, greedy_aim] = greedy_solver.solve(50);
+    auto [dp_throws, dp_aim] = dp_solver.solve(50);
+    
+    // Both should produce valid results
+    EXPECT_GT(greedy_score, 0.0) << "Greedy should have positive expected score";
+    EXPECT_GT(dp_throws, 0.0) << "DP should have positive expected throws";
+    
+    // Aims might be different (greedy is myopic, DP considers future)
+    // Just verify both are reasonable
+    auto bounds = game.get_target_bounds();
+    EXPECT_GE(greedy_aim.x, bounds.min.x);
+    EXPECT_LE(greedy_aim.x, bounds.max.x);
+    EXPECT_GE(dp_aim.x, bounds.min.x);
+    EXPECT_LE(dp_aim.x, bounds.max.x);
+}
+
+/**
+ * Test: MaxPointsSolver score calculation correctness
+ * Verify that solve_aim correctly computes expected score
+ */
+TEST(MaxPointsSolver, ScoreCalculationCorrectness) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{100, 0}, {0, 100}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 400);
+    
+    // Aim at center (should hit bull primarily)
+    Vec2 aim_center{0, 0};
+    double score = solver.solve_aim(100, aim_center);
+    
+    // Score should be reasonable (between 0 and 50, closer to 50 if accurate)
+    EXPECT_GT(score, 5.0) << "Should score significant points when aiming at bull";
+    EXPECT_LT(score, 50.0) << "Can't score more than maximum zone value";
+    
+    // Aim far away (should mostly miss)
+    Vec2 aim_far{500, 500};
+    double score_far = solver.solve_aim(100, aim_far);
+    
+    EXPECT_LT(score_far, score) << "Aiming away should score fewer points";
+    EXPECT_GE(score_far, 0.0) << "Score should be non-negative";
+}
+
+/**
+ * Test: HeatMapVisualizer with MaxPointsSolver
+ * Verify heat map generation works with MaxPointsSolver and shows expected points
+ */
+TEST(MaxPointsSolver, HeatMapVisualization) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{120, 0}, {0, 120}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    MaxPointsSolver solver(game, 600);
+    
+    HeatMapVisualizer visualizer(solver, 15, 15);  // 15x15 grid
+    auto heat_map = visualizer.heat_map(100);
+    
+    EXPECT_EQ(heat_map.size(), 15) << "Heat map should have correct height";
+    EXPECT_EQ(heat_map[0].size(), 15) << "Heat map should have correct width";
+    
+    // Find min and max expected points
+    double min_score = std::numeric_limits<double>::max();
+    double max_score = std::numeric_limits<double>::lowest();
+    
+    for (const auto& row : heat_map) {
+        for (double score : row) {
+            min_score = std::min(min_score, score);
+            max_score = std::max(max_score, score);
+            EXPECT_GE(score, 0.0) << "All scores should be non-negative";
+        }
+    }
+    
+    // Heat map should show variation (different aims give different expected scores)
+    EXPECT_GT(max_score, min_score + 5.0) 
+        << "Heat map should show significant variation in expected scores";
+    
+    // Max score should be reasonable (less than highest single zone value)
+    EXPECT_LT(max_score, 50.0) << "Max expected score should be less than bull value";
+    
+    // Min score should be small (aiming far from target)
+    EXPECT_LT(min_score, 20.0) << "Min expected score should be relatively low";
+}
+
+/**
+ * Test: HeatMapVisualizer works with different solver types
+ * Compare heat maps from SolverMinThrows and MaxPointsSolver
+ */
+TEST(Integration, HeatMapWithDifferentSolvers) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{150, 0}, {0, 150}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnAny game(target, dist);
+    
+    // Create both solver types
+    SolverMinThrows min_throws_solver(game, 400);
+    MaxPointsSolver max_points_solver(game, 400);
+    
+    // Create heat maps with same grid size
+    HeatMapVisualizer min_throws_viz(min_throws_solver, 10, 10);
+    HeatMapVisualizer max_points_viz(max_points_solver, 10, 10);
+    
+    auto heat_map_throws = min_throws_viz.heat_map(50);
+    auto heat_map_points = max_points_viz.heat_map(50);
+    
+    // Both should have correct dimensions
+    EXPECT_EQ(heat_map_throws.size(), 10);
+    EXPECT_EQ(heat_map_throws[0].size(), 10);
+    EXPECT_EQ(heat_map_points.size(), 10);
+    EXPECT_EQ(heat_map_points[0].size(), 10);
+    
+    // Both should show variation
+    double min_throws = std::numeric_limits<double>::max();
+    double max_throws = std::numeric_limits<double>::lowest();
+    double min_points = std::numeric_limits<double>::max();
+    double max_points = std::numeric_limits<double>::lowest();
+    
+    for (size_t i = 0; i < 10; ++i) {
+        for (size_t j = 0; j < 10; ++j) {
+            min_throws = std::min(min_throws, heat_map_throws[i][j]);
+            max_throws = std::max(max_throws, heat_map_throws[i][j]);
+            min_points = std::min(min_points, heat_map_points[i][j]);
+            max_points = std::max(max_points, heat_map_points[i][j]);
+        }
+    }
+    
+    EXPECT_GT(max_throws, min_throws) << "MinThrows heat map should show variation";
+    EXPECT_GT(max_points, min_points) << "MaxPoints heat map should show variation";
+    
+    // Values should be in expected ranges
+    EXPECT_GT(min_throws, 0.0) << "Expected throws should be positive";
+    EXPECT_GT(min_points, 0.0) << "Expected points should be positive";
+    EXPECT_LT(max_points, 50.0) << "Max points shouldn't exceed highest zone value";
 }

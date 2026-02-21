@@ -108,15 +108,22 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     class_<GameFinishOnDouble, base<Game>>("GameFinishOnDouble")
         .constructor<const Target&, const Distribution&>();
     
-    // Solver
+    // Abstract Solver base - no constructor (pure virtual)
     class_<Solver>("Solver")
+        .function("solve_aim", &Solver::solve_aim);
+    
+    // Concrete solver implementations
+    class_<SolverMinThrows, base<Solver>>("SolverMinThrows")
+        .constructor<const Game&, size_t>();
+    
+    class_<MaxPointsSolver, base<Solver>>("MaxPointsSolver")
         .constructor<const Game&, size_t>();
     
     // Wrapper function for Solver::solve (returns SolveResult instead of std::pair)
     function("solverSolve", &solverSolve);
     
-    // HeatMapSolver
-    class_<HeatMapSolver>("HeatMapSolver")
-        .constructor<const Game&, size_t, size_t, size_t>()
-        .function("heat_map", &HeatMapSolver::heat_map);
+    // HeatMapVisualizer
+    class_<HeatMapVisualizer>("HeatMapVisualizer")
+        .constructor<Solver&, size_t, size_t>()
+        .function("heat_map", &HeatMapVisualizer::heat_map);
 }

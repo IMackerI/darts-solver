@@ -233,10 +233,10 @@ async function testSolver() {
         
         game = new dartsModule.GameFinishOnDouble(target, dist);
         
-        // Create Solver (passing Game object!)
-        log('Creating Solver with 1000 samples (passing Game object)...');
-        solver = new dartsModule.Solver(game, 1000);
-        testPassed('Solver constructor with Game parameter');
+        // Create SolverMinThrows (passing Game object!)
+        log('Creating SolverMinThrows with 1000 samples (passing Game object)...');
+        solver = new dartsModule.SolverMinThrows(game, 1000);
+        testPassed('SolverMinThrows constructor with Game parameter');
         
         // Test solve method
         log('Testing solve() method for state 50...');
@@ -268,14 +268,15 @@ async function testSolver() {
     return true;
 }
 
-// Test 5: HeatMapSolver Class
-async function testHeatMapSolver() {
-    log('\n=== Testing HeatMapSolver Class ===', 'warning');
+// Test 5: HeatMapVisualizer Class
+async function testHeatMapVisualizer() {
+    log('\n=== Testing HeatMapVisualizer Class ===', 'warning');
     
     let target = null;
     let dist = null;
     let game = null;
-    let heatMapSolver = null;
+    let solver = null;
+    let heatMapVisualizer = null;
     
     try {
         // Setup - load target
@@ -293,17 +294,20 @@ async function testHeatMapSolver() {
         
         game = new dartsModule.GameFinishOnDouble(target, dist);
         
-        // Create HeatMapSolver
-        log('Creating HeatMapSolver with 20x20 grid, 500 samples...');
+        // Create solver first (HeatMapVisualizer needs a solver reference)
+        log('Creating SolverMinThrows with 500 samples...');
+        solver = new dartsModule.SolverMinThrows(game, 500);
+        
+        // Create HeatMapVisualizer
+        log('Creating HeatMapVisualizer with 20x20 grid...');
         const gridHeight = 20;
         const gridWidth = 20;
-        const numSamples = 500;
-        heatMapSolver = new dartsModule.HeatMapSolver(game, gridHeight, gridWidth, numSamples);
-        testPassed('HeatMapSolver constructor');
+        heatMapVisualizer = new dartsModule.HeatMapVisualizer(solver, gridHeight, gridWidth);
+        testPassed('HeatMapVisualizer constructor');
         
         // Generate heat map for a state
         log('Generating heat map for state 50...');
-        const heatMap = heatMapSolver.heat_map(50);
+        const heatMap = heatMapVisualizer.heat_map(50);
         log(`Heat map size: ${heatMap.size()} rows`);
         
         if (heatMap.size() > 0) {
@@ -322,17 +326,18 @@ async function testHeatMapSolver() {
                 }
             }
             log(`Heat map value range: ${minVal.toFixed(3)} to ${maxVal.toFixed(3)}`);
-            testPassed('HeatMapSolver.heat_map() method');
+            testPassed('HeatMapVisualizer.heat_map() method');
         } else {
             throw new Error('Heat map is empty');
         }
         
     } catch (error) {
-        testFailed('HeatMapSolver test', error.message);
+        testFailed('HeatMapVisualizer test', error.message);
         return false;
     } finally {
         // Cleanup
-        if (heatMapSolver) heatMapSolver.delete();
+        if (heatMapVisualizer) heatMapVisualizer.delete();
+        if (solver) solver.delete();
         if (game) game.delete();
         if (dist) dist.delete();
         if (target) target.delete();
@@ -353,7 +358,7 @@ async function runAllTests() {
     allPassed = testDistributions() && allPassed;
     allPassed = (await testGameClasses()) && allPassed;
     allPassed = (await testSolver()) && allPassed;
-    allPassed = (await testHeatMapSolver()) && allPassed;
+    allPassed = (await testHeatMapVisualizer()) && allPassed;
     
     log('\n====================================');
     if (allPassed) {
@@ -427,8 +432,9 @@ async function initWasm() {
         log('  - NormalDistributionRandom', 'info');
         log('  - GameFinishOnAny', 'info');
         log('  - GameFinishOnDouble', 'info');
-        log('  - Solver', 'info');
-        log('  - HeatMapSolver', 'info');
+        log('  - SolverMinThrows', 'info');
+        log('  - MaxPointsSolver', 'info');
+        log('  - HeatMapVisualizer', 'info');
         log('\\nClick "Run All Tests" to verify bindings!', 'warning');
         
     } catch (error) {
@@ -461,7 +467,7 @@ window.addEventListener('DOMContentLoaded', () => {
     });
     document.getElementById('testHeatMapBtn').addEventListener('click', async () => {
         clearOutput();
-        await testHeatMapSolver();
+        await testHeatMapVisualizer();
     });
     document.getElementById('testThrowBtn').addEventListener('click', testManualThrow);
     document.getElementById('clearBtn').addEventListener('click', clearOutput);
