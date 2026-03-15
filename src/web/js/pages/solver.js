@@ -7,8 +7,10 @@ import * as State from '../state.js';
 import * as Wasm from '../wasm.js';
 
 const DEFAULT_COVARIANCE = [1600, 0, 0, 1600];
-const MAX_SOLVE_CACHE = 2000;
-const MAX_HEATMAP_CACHE = 48;
+const MAX_SOLVE_CACHE = 50000;
+const MAX_HEATMAP_CACHE = 1200;
+const MAX_SOLVE_CACHE_HARD_CAP = 80000;
+const MAX_HEATMAP_CACHE_HARD_CAP = 2500;
 const instances = new Map();
 let activeInstance = null;
 
@@ -50,6 +52,8 @@ class SolverTabController {
         this.currentHeatmapKey = null;
         this.solveCache = new Map();
         this.heatmapCache = new Map();
+        this.solveCacheLimit = MAX_SOLVE_CACHE;
+        this.heatmapCacheLimit = MAX_HEATMAP_CACHE;
 
         this.lastResult = null;
         this.mounted = false;
@@ -351,7 +355,6 @@ class SolverTabController {
         if (params.showHeatmap) {
             heatmapKey = this._heatmapCacheKey(params, cov);
             cachedHeatmap = this.heatmapCache.get(heatmapKey);
-            if (!cachedHeatmap) return false;
         }
 
         this.lastResult = cachedResult;
@@ -360,6 +363,7 @@ class SolverTabController {
             this.cachedHeatmapBounds = cachedHeatmap.bounds;
             this.currentHeatmapKey = heatmapKey;
         } else {
+            // Solve result can still be applied instantly even if heatmap cache was evicted.
             this.cachedHeatmap = null;
             this.cachedHeatmapBounds = null;
             this.currentHeatmapKey = null;
@@ -390,7 +394,7 @@ class SolverTabController {
             )
             : await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
 
-        this._setCacheEntry(this.solveCache, key, result, MAX_SOLVE_CACHE);
+        this._setCacheEntry(this.solveCache, key, result, this.solveCacheLimit);
         return result;
     }
 
@@ -418,7 +422,7 @@ class SolverTabController {
                 params.heatmapResolution,
             );
 
-        this._setCacheEntry(this.heatmapCache, key, hm, MAX_HEATMAP_CACHE);
+        this._setCacheEntry(this.heatmapCache, key, hm, this.heatmapCacheLimit);
         return { key, hm };
     }
 
@@ -833,6 +837,17 @@ class SolverTabController {
             const base = this._readParams();
             const totalStates = this._estimateBatchStateCount(limit, base);
             let processedStates = 0;
+
+            // Keep as many newly precomputed states as practical so subsequent interactions
+            // and reruns can reuse results instead of recomputing.
+            this.solveCacheLimit = Math.min(
+                Math.max(this.solveCacheLimit, totalStates + 256),
+                MAX_SOLVE_CACHE_HARD_CAP,
+            );
+            this.heatmapCacheLimit = Math.min(
+                Math.max(this.heatmapCacheLimit, Math.min(totalStates, MAX_HEATMAP_CACHE_HARD_CAP)),
+                MAX_HEATMAP_CACHE_HARD_CAP,
+            );
 
             if (progressBar) {
                 progressBar.max = totalStates;
