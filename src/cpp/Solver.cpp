@@ -148,7 +148,7 @@ SolverMinRounds::Score SolverMinRounds::solve_aim(Game::State s, Vec2 aim) {
     auto hits = game_.throw_at_distribution(aim);
 
     double expected = 0.0;
-        double prob_sum = 0.0;
+    double prob_sum = 0.0;
     for (size_t i = 0; i < states.size(); ++i) {
         Game::State next_state = states[i].first;
         double prob = std::max(0.0, states[i].second); prob_sum += prob;
@@ -167,6 +167,13 @@ SolverMinRounds::Score SolverMinRounds::solve_aim(Game::State s, Vec2 aim) {
             }
         }
     }
+
+    if (prob_sum > 0) {
+        expected /= prob_sum;
+    } else {
+        expected = INFINITE_SCORE;
+    }
+
     // Expected future rounds if we take this aim + 1 for the current round
     return expected + 1.0; 
 }
@@ -198,7 +205,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
     std::pair<SolverMinRounds::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
     int iterations = 0;
 
-    while (std::abs(current_guess - last_guess) > EPSILON && iterations < 1000) {
+    while (std::abs(current_guess - last_guess) > EPSILON && iterations < 50) {
         last_guess = current_guess;
         double best_expected = INFINITE_SCORE;
         Vec2 best_aim{0.0, 0.0};
@@ -210,7 +217,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
             auto hits = game_.throw_at_distribution(aim);
 
             double expected = 0.0;
-        double prob_sum = 0.0;
+            double prob_sum = 0.0;
             for (size_t i = 0; i < states.size(); ++i) {
                 Game::State next_state = states[i].first;
                 double prob = std::max(0.0, states[i].second); prob_sum += prob;
@@ -242,7 +249,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
         iterations++;
     }
 
-    if (std::abs(current_guess - last_guess) > EPSILON || best_score.first > 1e4) { best_score.first = INFINITE_SCORE; }
+    if (best_score.first > 1e4) { best_score.first = INFINITE_SCORE; }
     if (best_score.first < INFINITE_SCORE - 1000.0) {
         winable_.insert(s);
     }

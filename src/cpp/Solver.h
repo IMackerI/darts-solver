@@ -117,7 +117,7 @@ public:
  */
 class SolverMinRounds : public Solver {
 private:
-    static constexpr double EPSILON = 1e-9;
+    static constexpr double EPSILON = 1e-5;
     static constexpr double INFINITE_SCORE = 1e9;
 
     unsigned int throws_per_round_;
@@ -155,7 +155,7 @@ public:
      * @param s State to solve
      * @return (expected_rounds, optimal_aim_for_first_dart) pair
      */
-    [[nodiscard]] std::pair<Score, Vec2> solve(Game::State s) override;
+    std::pair<Score, Vec2> solve(Game::State s) override;
 };
 /**
  * @brief Greedy solver that maximizes expected points per throw.

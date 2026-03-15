@@ -778,3 +778,20 @@ TEST(SolverMinRounds, UnwinnableStateHandling) {
     // Should be penalized with INFINITE_SCORE (1e9)
     EXPECT_GE(res_1.first, 1e8);
 }
+
+TEST(SolverMinRounds, OriginalTarget) {
+    Target target("/home/macker/School/2zimni/cpp/darts-solver/tests/target.out");
+    NormalDistribution::covariance cov = {{{100.0, 0.0}, {0.0, 100.0}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 100);
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 501);
+    
+    // Test that a standard score does not result in INFINITE_SCORE
+    auto res = solver.solve(2);
+    
+    EXPECT_LT(res.first, 1e4);
+    
+    auto res_full = solver.solve(501);
+    EXPECT_LT(res_full.first, 1e4);
+}
