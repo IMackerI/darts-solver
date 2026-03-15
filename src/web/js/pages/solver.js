@@ -168,9 +168,14 @@ function _onCanvasMouseMove(e) {
     }
 
     const solverType = document.getElementById('solver-type').value;
-    const label = solverType === 'maxPoints'
-        ? `${val.toFixed(2)} pts`
-        : `${val.toFixed(2)} throws`;
+    let label;
+    if (solverType === 'maxPoints') {
+        label = `${val.toFixed(2)} pts`;
+    } else if (solverType === 'minRounds') {
+        label = `${val.toFixed(2)} rounds`;
+    } else {
+        label = `${val.toFixed(2)} throws`;
+    }
 
     tip.textContent = label;
     tip.style.left = e.clientX + 'px';
@@ -199,9 +204,9 @@ async function _onSolve() {
         alert('Invalid state value');
         return;
     }
-    // DP solver (minThrows) is O(state) and can hang/crash for large values
-    if (solverType === 'minThrows' && stateVal > 1000) {
-        alert('State values above 1000 are not supported for the DP solver (Minimize Throws).\n'
+    // DP solvers (minThrows, minRounds) are O(state) and can hang/crash for large values
+    if ((solverType === 'minThrows' || solverType === 'minRounds') && stateVal > 1000) {
+        alert('State values above 1000 are not supported for the DP solvers.\n'
             + 'Use Max Points solver for large state values, or pick a value ≤ 1000.');
         return;
     }
@@ -272,7 +277,7 @@ function _renderBoard() {
  */
 function _showResults(result, solverType) {
     const info = document.getElementById('solve-results');
-    const label = solverType === 'maxPoints' ? 'Expected points' : 'Expected throws';
+    const label = solverType === 'maxPoints' ? 'Expected points' : (solverType === 'minRounds' ? 'Expected rounds' : 'Expected throws');
     info.innerHTML = `
         <p class="result-line">${label}: <span class="value">${result.expectedValue.toFixed(3)}</span></p>
         <p class="result-line">Optimal aim: <span class="value">(${result.optimalAim.x.toFixed(1)}, ${result.optimalAim.y.toFixed(1)})</span></p>

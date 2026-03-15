@@ -108,8 +108,14 @@ function _ensureObjects(covFlat, gameMode, solverType, samples) {
         _solver?.delete();
         const SolverClass = solverType === 'maxPoints'
             ? module.MaxPointsSolver
-            : module.SolverMinThrows;
-        _solver = new SolverClass(_game, samples);
+            : solverType === 'minRounds'
+                ? module.SolverMinRounds
+                : module.SolverMinThrows;
+        if (solverType === 'minRounds') {
+            _solver = new SolverClass(_game, 3, samples);
+        } else {
+            _solver = new SolverClass(_game, samples);
+        }
         _cachedSolverType = solverType;
         _cachedSamples = samples;
     }

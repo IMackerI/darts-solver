@@ -119,6 +119,9 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     class_<MaxPointsSolver, base<Solver>>("MaxPointsSolver")
         .constructor<const Game&, size_t>();
     
+    class_<SolverMinRounds, base<Solver>>("SolverMinRounds")
+        .constructor<const Game&, unsigned int, size_t>();
+    
     // Wrapper function for Solver::solve (returns SolveResult instead of std::pair)
     function("solverSolve", &solverSolve);
     
