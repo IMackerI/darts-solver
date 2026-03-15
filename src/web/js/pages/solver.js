@@ -150,6 +150,11 @@ class SolverTabController {
             }, opts);
         }
 
+        // Keep the solve-up button text in sync while the user types.
+        this.q('solve-up-to')?.addEventListener('input', () => {
+            this._updateSolveUpToButtonLabel();
+        }, opts);
+
         document.addEventListener('keydown', (e) => this._onKeyDown(e), opts);
 
         const canvas = this.q('solver-canvas');
@@ -448,7 +453,7 @@ class SolverTabController {
 
         try {
             const cov = this._getCovariance();
-            const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+            const result = await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
             if (this.cancelRequested) return false;
             this.lastResult = result;
 
@@ -463,7 +468,7 @@ class SolverTabController {
                     await nextFrame();
                     if (this.cancelRequested) return false;
                 }
-                const hm = Wasm.heatmap(
+                const hm = await Wasm.heatmap(
                     params.pointsRemaining,
                     cov,
                     params.gameMode,
@@ -471,6 +476,7 @@ class SolverTabController {
                     params.samples,
                     params.heatmapResolution,
                 );
+                if (this.cancelRequested) return false;
                 this.cachedHeatmap = hm.grid;
                 this.cachedHeatmapBounds = hm.bounds;
             } else {
@@ -559,7 +565,7 @@ class SolverTabController {
                     showHeatmap: true,
                 };
 
-                const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+                const result = await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
                 await yieldToUi();
                 if (this.cancelRequested) {
                     if (progressText) {
@@ -575,7 +581,7 @@ class SolverTabController {
                     }
                     break;
                 }
-                const hm = Wasm.heatmap(
+                const hm = await Wasm.heatmap(
                     params.pointsRemaining,
                     cov,
                     params.gameMode,
@@ -583,6 +589,12 @@ class SolverTabController {
                     params.samples,
                     params.heatmapResolution,
                 );
+                if (this.cancelRequested) {
+                    if (progressText) {
+                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
+                    }
+                    break;
+                }
 
                 this.lastResult = result;
                 this.cachedHeatmap = hm.grid;

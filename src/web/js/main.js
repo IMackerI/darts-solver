@@ -72,6 +72,9 @@ function navigate() {
 async function init() {
     State.loadFromStorage();
 
+    const workerFlag = window.DARTS_USE_WORKERS;
+    Wasm.setWorkerMode(workerFlag !== false);
+
     // Ensure nav works even if hashchange is not dispatched by the environment.
     document.querySelectorAll('.nav-link[href^="#/"]').forEach((link) => {
         link.addEventListener('click', (e) => {
