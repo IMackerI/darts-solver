@@ -156,7 +156,7 @@ class SolverTabController {
             this._requestCancel();
         }, opts);
 
-        const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to', 'round-start-score'];
+        const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to', 'round-start-score', 'precompute-all-round-starts'];
         for (const role of trackedRoles) {
             this.q(role)?.addEventListener('change', (e) => {
                 e.target.blur();
@@ -197,6 +197,7 @@ class SolverTabController {
         const solveUpTo = State.get(this._tabPath('solveUpTo')) ?? defaults.solveUpTo;
         const throwNumber = State.get(this._tabPath('throwNumber')) ?? defaults.throwNumber;
         const roundStartScore = State.get(this._tabPath('roundStartScore')) ?? defaults.roundStartScore;
+        const precomputeAllRoundStarts = State.get(this._tabPath('precomputeAllRoundStarts')) ?? defaults.precomputeAllRoundStarts;
 
         if (this.q('game-mode')) this.q('game-mode').value = gameMode;
         if (this.q('points-remaining')) this.q('points-remaining').value = pointsRemaining;
@@ -206,6 +207,7 @@ class SolverTabController {
         if (this.q('solve-up-to')) this.q('solve-up-to').value = solveUpTo;
         if (this.q('throw-number')) this.q('throw-number').value = throwNumber;
         if (this.q('round-start-score')) this.q('round-start-score').value = roundStartScore;
+        if (this.q('precompute-all-round-starts')) this.q('precompute-all-round-starts').checked = precomputeAllRoundStarts;
 
         this._syncMinRoundsRoundStateControls();
 
@@ -237,6 +239,7 @@ class SolverTabController {
                 pointsRemaining: 501,
                 roundStartScore: 501,
                 throwNumber: 1,
+                precomputeAllRoundStarts: false,
                 gameMode: this.section.dataset.defaultGameMode || 'finishOnDouble',
                 aimSamples: parseInt(this.section.dataset.defaultSamples || '1000', 10),
                 showHeatmap: this.section.dataset.defaultShowHeatmap === 'true',
@@ -257,6 +260,7 @@ class SolverTabController {
         if (this.solverType === 'minRounds') {
             State.set(this._tabPath('throwNumber'), params.minRoundsState.throwNumber);
             State.set(this._tabPath('roundStartScore'), params.minRoundsState.roundStartScore);
+            State.set(this._tabPath('precomputeAllRoundStarts'), params.precomputeAllRoundStarts);
         }
 
         const solveUpToInput = this.q('solve-up-to');
@@ -266,6 +270,7 @@ class SolverTabController {
 
         this._dropStaleDisplayedHeatmap(params);
         State.saveToStorage();
+        this._tryApplyCachedMinRoundsState(params);
     }
 
     _setCacheEntry(cache, key, value, maxSize) {
@@ -332,6 +337,43 @@ class SolverTabController {
         }
     }
 
+    _tryApplyCachedMinRoundsState(params) {
+        if (this.solverType !== 'minRounds') return false;
+        if (this.isSolving || this.runningBatch) return false;
+
+        const cov = this._getCovariance();
+        const solveKey = this._solveCacheKey(params, cov);
+        const cachedResult = this.solveCache.get(solveKey);
+        if (!cachedResult) return false;
+
+        let cachedHeatmap = null;
+        let heatmapKey = null;
+        if (params.showHeatmap) {
+            heatmapKey = this._heatmapCacheKey(params, cov);
+            cachedHeatmap = this.heatmapCache.get(heatmapKey);
+            if (!cachedHeatmap) return false;
+        }
+
+        this.lastResult = cachedResult;
+        if (params.showHeatmap && cachedHeatmap) {
+            this.cachedHeatmap = cachedHeatmap.grid;
+            this.cachedHeatmapBounds = cachedHeatmap.bounds;
+            this.currentHeatmapKey = heatmapKey;
+        } else {
+            this.cachedHeatmap = null;
+            this.cachedHeatmapBounds = null;
+            this.currentHeatmapKey = null;
+        }
+
+        State.set(this._tabPath('optimalAim'), cachedResult.optimalAim);
+        State.set(this._tabPath('expectedValue'), cachedResult.expectedValue);
+        State.saveToStorage();
+
+        this._renderBoard();
+        this._showResults(cachedResult);
+        return true;
+    }
+
     async _fetchSolveResult(params, cov) {
         const key = this._solveCacheKey(params, cov);
         const cached = this.solveCache.get(key);
@@ -380,29 +422,55 @@ class SolverTabController {
         return { key, hm };
     }
 
-    _batchStatesForScore(base, score) {
+    _batchStatesForScore(base, score, limit) {
         const requestedThrow = base.minRoundsState?.throwNumber || 1;
         const preferredRoundStart = base.minRoundsState?.roundStartScore || score;
         const sharedRoundStart = Math.max(score, preferredRoundStart);
 
-        const states = [
-            {
-                throwNumber: 1,
-                roundStartScore: score,
-            },
-            {
-                throwNumber: 2,
-                roundStartScore: sharedRoundStart,
-            },
-            {
-                throwNumber: 3,
-                roundStartScore: sharedRoundStart,
-            },
-        ];
+        const maxRoundStart = Math.max(score, limit);
+        const startScores = base.precomputeAllRoundStarts
+            ? (() => {
+                const vals = [];
+                for (let start = score; start <= maxRoundStart; start++) {
+                    vals.push(start);
+                }
+                return vals;
+            })()
+            : [sharedRoundStart];
 
-        let displayIndex = states.findIndex((s) => s.throwNumber === requestedThrow);
+        const states = [{
+            throwNumber: 1,
+            roundStartScore: score,
+        }];
+
+        for (const roundStartScore of startScores) {
+            states.push({
+                throwNumber: 2,
+                roundStartScore,
+            });
+            states.push({
+                throwNumber: 3,
+                roundStartScore,
+            });
+        }
+
+        let displayIndex = states.findIndex((s) => s.throwNumber === requestedThrow && s.roundStartScore === preferredRoundStart);
+        if (displayIndex < 0) displayIndex = states.findIndex((s) => s.throwNumber === requestedThrow);
         if (displayIndex < 0) displayIndex = 0;
         return { states, displayIndex };
+    }
+
+    _estimateBatchStateCount(limit, base) {
+        if (!base.precomputeAllRoundStarts) {
+            return limit * 3;
+        }
+
+        let total = 0;
+        for (let score = 1; score <= limit; score++) {
+            const startCount = limit - score + 1;
+            total += 1 + 2 * startCount;
+        }
+        return total;
     }
 
     _updateCalibrationWarning() {
@@ -450,6 +518,9 @@ class SolverTabController {
             solverType: this.solverType,
             showHeatmap,
             heatmapResolution: Math.max(1, heatmapResolution || 1),
+            precomputeAllRoundStarts: this.solverType === 'minRounds'
+                ? (this.q('precompute-all-round-starts')?.checked ?? false)
+                : false,
             minRoundsState: this._readMinRoundsState(pointsRemaining),
         };
     }
@@ -760,6 +831,13 @@ class SolverTabController {
         try {
             const cov = this._getCovariance();
             const base = this._readParams();
+            const totalStates = this._estimateBatchStateCount(limit, base);
+            let processedStates = 0;
+
+            if (progressBar) {
+                progressBar.max = totalStates;
+                progressBar.value = 0;
+            }
 
             for (let score = 1; score <= limit; score++) {
                 if (this.cancelRequested) {
@@ -770,9 +848,6 @@ class SolverTabController {
                 }
                 if (progressText) {
                     progressText.textContent = `Calculating points remaining ${score} / ${limit}`;
-                }
-                if (progressBar) {
-                    progressBar.value = score;
                 }
                 pointsInput.value = String(score);
 
@@ -785,7 +860,7 @@ class SolverTabController {
                     break;
                 }
 
-                const { states, displayIndex } = this._batchStatesForScore(base, score);
+                const { states, displayIndex } = this._batchStatesForScore(base, score, limit);
                 let selectedResult = null;
                 let selectedHeatmap = null;
                 let selectedHeatmapKey = null;
@@ -800,7 +875,7 @@ class SolverTabController {
                     };
 
                     if (progressText) {
-                        progressText.textContent = `Calculating points ${score}/${limit}, throw ${state.throwNumber}/3`;
+                        progressText.textContent = `Calculating points ${score}/${limit}, throw ${state.throwNumber}/3, round start ${state.roundStartScore}`;
                     }
 
                     const result = await this._fetchSolveResult(params, cov);
@@ -808,6 +883,10 @@ class SolverTabController {
                     if (this.cancelRequested) break;
 
                     const { key, hm } = await this._fetchHeatmap(params, cov);
+                    processedStates += 1;
+                    if (progressBar) {
+                        progressBar.value = processedStates;
+                    }
                     await yieldToUi();
                     if (this.cancelRequested) break;
 
