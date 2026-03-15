@@ -8,16 +8,35 @@ const state = {
         covariance: null,   // [a, b, c, d] flat 2×2
         mean: null,         // {x, y}
     },
-    solver: {
-        currentState: 501,
-        gameMode: 'finishOnDouble',
-        solverType: 'minThrows',
-        aimSamples: 5000,
-        optimalAim: null,
-        expectedValue: null,
-        heatmapData: null,
-        showHeatmap: false,
-        heatmapResolution: 50,
+    solverTabs: {
+        maxPoints: {
+            pointsRemaining: 100000,
+            gameMode: 'finishOnAny',
+            aimSamples: 5000,
+            showHeatmap: true,
+            heatmapResolution: 100,
+            optimalAim: null,
+            expectedValue: null,
+        },
+        minThrows: {
+            pointsRemaining: 501,
+            gameMode: 'finishOnDouble',
+            aimSamples: 5000,
+            showHeatmap: true,
+            heatmapResolution: 50,
+            optimalAim: null,
+            expectedValue: null,
+        },
+        minRounds: {
+            pointsRemaining: 501,
+            gameMode: 'finishOnDouble',
+            aimSamples: 1000,
+            showHeatmap: false,
+            heatmapResolution: 30,
+            solveUpTo: 170,
+            optimalAim: null,
+            expectedValue: null,
+        },
     },
 };
 
@@ -48,7 +67,10 @@ export function get(path) {
 export function set(path, value) {
     const parts = path.split('.');
     let obj = state;
-    for (let i = 0; i < parts.length - 1; i++) obj = obj[parts[i]];
+    for (let i = 0; i < parts.length - 1; i++) {
+        if (obj[parts[i]] == null || typeof obj[parts[i]] !== 'object') obj[parts[i]] = {};
+        obj = obj[parts[i]];
+    }
     obj[parts[parts.length - 1]] = value;
     _notify(path);
 }
@@ -61,12 +83,7 @@ export function saveToStorage() {
     try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
             calibration: state.calibration,
-            solver: {
-                currentState: state.solver.currentState,
-                gameMode: state.solver.gameMode,
-                solverType: state.solver.solverType,
-                aimSamples: state.solver.aimSamples,
-            },
+            solverTabs: state.solverTabs,
         }));
     } catch { /* quota exceeded — ignore */ }
 }
@@ -80,8 +97,52 @@ export function loadFromStorage() {
         if (saved.calibration) {
             state.calibration = { ...state.calibration, ...saved.calibration };
         }
-        if (saved.solver) {
-            Object.assign(state.solver, saved.solver);
+
+        if (saved.solverTabs) {
+            for (const key of Object.keys(state.solverTabs)) {
+                if (saved.solverTabs[key]) {
+                    state.solverTabs[key] = { ...state.solverTabs[key], ...saved.solverTabs[key] };
+                }
+            }
+        }
+
+        // Defensive normalization in case localStorage contained malformed tab data.
+        if (!state.solverTabs || typeof state.solverTabs !== 'object') {
+            state.solverTabs = {};
+        }
+        if (!state.solverTabs.maxPoints || typeof state.solverTabs.maxPoints !== 'object') {
+            state.solverTabs.maxPoints = {
+                pointsRemaining: 100000,
+                gameMode: 'finishOnAny',
+                aimSamples: 5000,
+                showHeatmap: true,
+                heatmapResolution: 100,
+                optimalAim: null,
+                expectedValue: null,
+            };
+        }
+        if (!state.solverTabs.minThrows || typeof state.solverTabs.minThrows !== 'object') {
+            state.solverTabs.minThrows = {
+                pointsRemaining: 501,
+                gameMode: 'finishOnDouble',
+                aimSamples: 5000,
+                showHeatmap: true,
+                heatmapResolution: 50,
+                optimalAim: null,
+                expectedValue: null,
+            };
+        }
+        if (!state.solverTabs.minRounds || typeof state.solverTabs.minRounds !== 'object') {
+            state.solverTabs.minRounds = {
+                pointsRemaining: 501,
+                gameMode: 'finishOnDouble',
+                aimSamples: 1000,
+                showHeatmap: false,
+                heatmapResolution: 30,
+                solveUpTo: 170,
+                optimalAim: null,
+                expectedValue: null,
+            };
         }
     } catch { /* corrupted — ignore */ }
 }

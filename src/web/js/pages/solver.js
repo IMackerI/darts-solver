@@ -1,378 +1,594 @@
 /**
  * @file solver.js
- * @brief Solver page — solve for optimal aim point and display the strategy heatmap.
+ * @brief Solver tabs page logic.
  */
 import { DartboardRenderer } from '../dartboard.js';
 import * as State from '../state.js';
-import * as Wasm  from '../wasm.js';
+import * as Wasm from '../wasm.js';
 
-let renderer = null;
-let beds = null;
-let bounds = null;
-let _mounted = false;
-const _abortCtrl = { current: null };
+const DEFAULT_COVARIANCE = [1600, 0, 0, 1600];
+const instances = new Map();
+let activeInstance = null;
 
-// Cached results so we can re-render without recomputing
-let cachedHeatmap = null;
-let cachedHeatmapBounds = null;
+export function mount(pageKey, parsedBeds, parsedBounds) {
+    const section = document.getElementById(`page-${pageKey}`);
+    if (!section) return;
 
-/**
- * Mount the solver page: initialise the renderer, restore form state, and attach listeners.
- * @param {object[]} parsedBeds    Parsed bed array from target.js.
- * @param {{min:{x,y},max:{x,y}}} parsedBounds  Bounding box from target.js.
- */
-export function mount(parsedBeds, parsedBounds) {
-    beds = parsedBeds;
-    bounds = parsedBounds;
-
-    const canvas = document.getElementById('solver-canvas');
-    _resizeCanvas(canvas);
-    renderer = new DartboardRenderer(canvas);
-    renderer.setBeds(beds, bounds);
-    renderer.render();
-
-    // Restore state into form fields
-    document.getElementById('game-mode').value      = State.get('solver.gameMode');
-    document.getElementById('game-state').value      = State.get('solver.currentState');
-    document.getElementById('solver-type').value     = State.get('solver.solverType');
-    document.getElementById('aim-samples').value     = State.get('solver.aimSamples');
-    document.getElementById('show-heatmap').checked  = State.get('solver.showHeatmap');
-    document.getElementById('heatmap-resolution').value = State.get('solver.heatmapResolution');
-    _toggleHeatmapRes();
-
-    if (!_mounted) {
-        _mounted = true;
-        const ac = new AbortController();
-        _abortCtrl.current = ac;
-        const sig = { signal: ac.signal };
-
-        document.getElementById('btn-solve').addEventListener('click', (e) => { e.target.blur(); _onSolve(); }, sig);
-        document.getElementById('show-heatmap').addEventListener('change', (e) => { e.target.blur(); _onHeatmapToggle(); }, sig);
-        document.getElementById('heatmap-resolution').addEventListener('change', (e) => { e.target.blur(); _onResChange(); }, sig);
-        document.getElementById('btn-state-prev').addEventListener('click', (e) => { e.target.blur(); _stepState(-1); }, sig);
-        document.getElementById('btn-state-next').addEventListener('click', (e) => { e.target.blur(); _stepState(+1); }, sig);
-        document.addEventListener('keydown', _onKeyDown, sig);
-
-        // Heatmap value tooltip on hover
-        const solverCanvas = document.getElementById('solver-canvas');
-        solverCanvas.addEventListener('mousemove', _onCanvasMouseMove, sig);
-        solverCanvas.addEventListener('mouseleave', _onCanvasMouseLeave, sig);
-
-        for (const id of ['game-mode', 'game-state', 'solver-type', 'aim-samples']) {
-            document.getElementById(id).addEventListener('change', (e) => { e.target.blur(); _syncFormToState(); }, sig);
-        }
+    if (activeInstance && activeInstance.section !== section) {
+        activeInstance.unmount();
     }
 
-    _updateCalibrationWarning();
+    let instance = instances.get(pageKey);
+    if (!instance) {
+        instance = new SolverTabController(section);
+        instances.set(pageKey, instance);
+    }
+
+    activeInstance = instance;
+    instance.mount(parsedBeds, parsedBounds);
 }
 
-/** Unmount the solver page, remove listeners, and clear cached heatmap data. */
 export function unmount() {
-    _abortCtrl.current?.abort();
-    _abortCtrl.current = null;
-    _mounted = false;
-    cachedHeatmap = null;
-    cachedHeatmapBounds = null;
+    activeInstance?.unmount();
+    activeInstance = null;
 }
 
-/* --- helpers --- */
+class SolverTabController {
+    constructor(section) {
+        this.section = section;
+        this.solverType = section.dataset.solverType;
+        this.autoSolve = section.dataset.autoSolve === 'true';
 
-/**
- * Return the calibration covariance matrix from state.
- * @returns {number[]|null} Flat [a,b,c,d] 2×2 matrix, or null if not calibrated.
- */
-function _getCovariance() {
-    const cov = State.get('calibration.covariance');
-    if (!cov) return null;
-    return cov;
-}
+        this.renderer = null;
+        this.beds = null;
+        this.bounds = null;
 
-/** Show a warning in the subtitle if no calibration data is available. */
-function _updateCalibrationWarning() {
-    const cov = _getCovariance();
-    const sub = document.getElementById('solver-subtitle');
-    if (!cov) {
-        sub.textContent = '⚠ No calibration data. Go to Calibration first, or a default will be used.';
-        sub.style.color = 'var(--red)';
-    } else {
-        sub.textContent = 'Configure and solve for optimal dart strategy.';
-        sub.style.color = '';
-    }
-}
+        this.cachedHeatmap = null;
+        this.cachedHeatmapBounds = null;
 
-/** Read all solver form fields and sync their values into the app state. */
-function _syncFormToState() {
-    State.set('solver.gameMode',    document.getElementById('game-mode').value);
-    State.set('solver.currentState', parseInt(document.getElementById('game-state').value, 10));
-    State.set('solver.solverType',  document.getElementById('solver-type').value);
-    State.set('solver.aimSamples',  parseInt(document.getElementById('aim-samples').value, 10));
-    State.saveToStorage();
-}
-
-/** Show or hide the heatmap resolution field based on the current toggle state. */
-function _toggleHeatmapRes() {
-    const show = document.getElementById('show-heatmap').checked;
-    document.getElementById('heatmap-res-field').style.display = show ? '' : 'none';
-}
-
-/* --- state navigation --- */
-
-/**
- * Increment or decrement the current game state by delta and re-solve.
- * @param {number} delta Positive or negative integer step.
- */
-function _stepState(delta) {
-    const input = document.getElementById('game-state');
-    const cur = parseInt(input.value, 10) || 0;
-    const next = Math.max(1, cur + delta);
-    input.value = next;
-    _syncFormToState();
-    _onSolve();
-}
-
-/**
- * Handle arrow key presses to step the game state when not focused on an input.
- * @param {KeyboardEvent} e
- */
-function _onKeyDown(e) {
-    // Only block arrows when typing in a text input
-    const active = document.activeElement;
-    const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
-    if (isTyping) return;
-
-    if (e.key === 'ArrowLeft') {
-        e.preventDefault();
-        _stepState(-1);
-    } else if (e.key === 'ArrowRight') {
-        e.preventDefault();
-        _stepState(+1);
-    }
-}
-
-/* --- heatmap tooltip --- */
-
-const _tooltip = () => document.getElementById('heatmap-tooltip');
-
-function _onCanvasMouseMove(e) {
-    const tip = _tooltip();
-    if (!cachedHeatmap) { tip.classList.add('hidden'); return; }
-
-    const rect = e.currentTarget.getBoundingClientRect();
-    const px = e.clientX - rect.left;
-    const py = e.clientY - rect.top;
-    const val = renderer.heatmapValueAt(px, py);
-
-    if (val === null) {
-        tip.classList.add('hidden');
-        return;
+        this.lastResult = null;
+        this.mounted = false;
+        this.abortController = null;
+        this.autoSolveTimer = null;
+        this.runningBatch = false;
     }
 
-    const solverType = document.getElementById('solver-type').value;
-    let label;
-    if (solverType === 'maxPoints') {
-        label = `${val.toFixed(2)} pts`;
-    } else if (solverType === 'minRounds') {
-        label = `${val.toFixed(2)} rounds`;
-    } else {
-        label = `${val.toFixed(2)} throws`;
+    q(role) {
+        return this.section.querySelector(`[data-role="${role}"]`);
     }
 
-    tip.textContent = label;
-    tip.style.left = e.clientX + 'px';
-    tip.style.top  = e.clientY + 'px';
-    tip.classList.remove('hidden');
-}
+    mount(parsedBeds, parsedBounds) {
+        this.beds = parsedBeds;
+        this.bounds = parsedBounds;
 
-function _onCanvasMouseLeave() {
-    _tooltip().classList.add('hidden');
-}
+        const canvas = this.q('solver-canvas');
+        if (!canvas) return;
 
-/* --- solve --- */
+        this._resizeCanvas(canvas);
+        this.renderer = new DartboardRenderer(canvas);
+        this.renderer.setBeds(this.beds, this.bounds);
+        this.renderer.render();
 
-/**
- * Run the solver with current form values, optionally compute a heatmap,
- * and display results on the board and in the results panel.
- */
-async function _onSolve() {
-    const cov = _getCovariance() || [1600, 0, 0, 1600]; // fallback default
-    const gameMode   = document.getElementById('game-mode').value;
-    const stateVal   = parseInt(document.getElementById('game-state').value, 10);
-    const solverType = document.getElementById('solver-type').value;
-    const samples    = parseInt(document.getElementById('aim-samples').value, 10);
+        this._restoreFormFromState();
+        this._toggleHeatmapResolutionVisibility();
 
-    if (isNaN(stateVal) || stateVal < 1) {
-        alert('Invalid state value');
-        return;
-    }
-    // DP solvers (minThrows, minRounds) are O(state) and can hang/crash for large values
-    if ((solverType === 'minThrows' || solverType === 'minRounds') && stateVal > 1000) {
-        alert('State values above 1000 are not supported for the DP solvers.\n'
-            + 'Use Max Points solver for large state values, or pick a value ≤ 1000.');
-        return;
-    }
-
-    _showLoading('Solving...');
-
-    // Run in a timeout so the loading overlay actually appears
-    await _nextFrame();
-
-    try {
-        const result = Wasm.solve(stateVal, cov, gameMode, solverType, samples);
-
-        State.set('solver.optimalAim', result.optimalAim);
-        State.set('solver.expectedValue', result.expectedValue);
-        _syncFormToState();
-
-        // Compute heatmap if toggle is on
-        if (document.getElementById('show-heatmap').checked) {
-            await _computeHeatmap(stateVal, cov, gameMode, solverType, samples);
-        } else {
-            cachedHeatmap = null;
+        if (!this.mounted) {
+            this._attachListeners();
+            this.mounted = true;
         }
 
-        _renderBoard();
-        _showResults(result, solverType);
-    } catch (err) {
-        console.error(err);
-        alert('Solve failed: ' + err.message);
-    } finally {
-        _hideLoading();
+        this._updateCalibrationWarning();
+
+        if (this.autoSolve) {
+            this._scheduleAutoSolve();
+        } else {
+            this._renderBoard();
+        }
     }
-}
 
-/**
- * Request a heatmap from the WASM solver and cache the result.
- * @param {number} stateVal   Current game state.
- * @param {number[]} cov      Flat 2×2 covariance.
- * @param {string} gameMode
- * @param {string} solverType
- * @param {number} samples
- */
-async function _computeHeatmap(stateVal, cov, gameMode, solverType, samples) {
-    _showLoading('Generating heatmap...');
-    await _nextFrame();
-    const res = parseInt(document.getElementById('heatmap-resolution').value, 10);
-    const hm = Wasm.heatmap(stateVal, cov, gameMode, solverType, samples, res);
-    cachedHeatmap = hm.grid;
-    cachedHeatmapBounds = hm.bounds;
-}
+    unmount() {
+        this.abortController?.abort();
+        this.abortController = null;
+        this.mounted = false;
+        this._clearAutoSolveTimer();
 
-/** Re-render the solver canvas with the current aim point and cached heatmap. */
-function _renderBoard() {
-    const aim = State.get('solver.optimalAim');
-    const solverType = document.getElementById('solver-type').value;
-    const invertColors = solverType === 'maxPoints';
-    renderer.render({
-        aimPoint: aim,
-        heatmap: cachedHeatmap,
-        heatmapBounds: cachedHeatmapBounds,
-        invertColors,
-    });
-}
+        this.cachedHeatmap = null;
+        this.cachedHeatmapBounds = null;
+    }
 
-/**
- * Populate the results panel with expected value and optimal aim coordinates.
- * @param {{expectedValue:number, optimalAim:{x:number,y:number}}} result
- * @param {string} solverType 'minThrows' | 'maxPoints'
- */
-function _showResults(result, solverType) {
-    const info = document.getElementById('solve-results');
-    const label = solverType === 'maxPoints' ? 'Expected points' : (solverType === 'minRounds' ? 'Expected rounds' : 'Expected throws');
-    info.innerHTML = `
-        <p class="result-line">${label}: <span class="value">${result.expectedValue.toFixed(3)}</span></p>
-        <p class="result-line">Optimal aim: <span class="value">(${result.optimalAim.x.toFixed(1)}, ${result.optimalAim.y.toFixed(1)})</span></p>
-    `;
-}
+    _attachListeners() {
+        const ac = new AbortController();
+        this.abortController = ac;
+        const opts = { signal: ac.signal };
 
-/* --- heatmap toggle --- */
+        this.q('show-heatmap')?.addEventListener('change', (e) => {
+            e.target.blur();
+            this._onHeatmapToggle();
+        }, opts);
 
-/** Handle the heatmap toggle: compute and show, or clear, the heatmap overlay. */
-async function _onHeatmapToggle() {
-    const on = document.getElementById('show-heatmap').checked;
-    State.set('solver.showHeatmap', on);
-    _toggleHeatmapRes();
+        this.q('heatmap-resolution')?.addEventListener('change', (e) => {
+            e.target.blur();
+            this._onResolutionChange();
+        }, opts);
 
-    if (on) {
-        // If no solve has been done yet, run a full solve (which includes heatmap)
-        if (!State.get('solver.optimalAim')) {
-            await _onSolve();
+        this.q('btn-points-prev')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this._stepPointsRemaining(-1);
+        }, opts);
+
+        this.q('btn-points-next')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this._stepPointsRemaining(+1);
+        }, opts);
+
+        this.q('btn-solve')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this.solve({ loadingMessage: 'Solving...' });
+        }, opts);
+
+        this.q('btn-solve-up-to')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this.solveUpToScore();
+        }, opts);
+
+        const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to'];
+        for (const role of trackedRoles) {
+            this.q(role)?.addEventListener('change', (e) => {
+                e.target.blur();
+                this._syncFormToState();
+                if (this.autoSolve) this._scheduleAutoSolve();
+            }, opts);
+        }
+
+        document.addEventListener('keydown', (e) => this._onKeyDown(e), opts);
+
+        const canvas = this.q('solver-canvas');
+        canvas?.addEventListener('mousemove', (e) => this._onCanvasMouseMove(e), opts);
+        canvas?.addEventListener('mouseleave', () => this._onCanvasMouseLeave(), opts);
+    }
+
+    _tabPath(path) {
+        return `solverTabs.${this.solverType}.${path}`;
+    }
+
+    _getCovariance() {
+        return State.get('calibration.covariance') || DEFAULT_COVARIANCE;
+    }
+
+    _restoreFormFromState() {
+        const defaults = this._getDefaults();
+
+        const gameMode = State.get(this._tabPath('gameMode')) ?? defaults.gameMode;
+        const pointsRemaining = State.get(this._tabPath('pointsRemaining')) ?? defaults.pointsRemaining;
+        const aimSamples = State.get(this._tabPath('aimSamples')) ?? defaults.aimSamples;
+        const showHeatmap = State.get(this._tabPath('showHeatmap')) ?? defaults.showHeatmap;
+        const heatmapResolution = State.get(this._tabPath('heatmapResolution')) ?? defaults.heatmapResolution;
+        const solveUpTo = State.get(this._tabPath('solveUpTo')) ?? defaults.solveUpTo;
+
+        if (this.q('game-mode')) this.q('game-mode').value = gameMode;
+        if (this.q('points-remaining')) this.q('points-remaining').value = pointsRemaining;
+        if (this.q('aim-samples')) this.q('aim-samples').value = aimSamples;
+        if (this.q('show-heatmap')) this.q('show-heatmap').checked = showHeatmap;
+        if (this.q('heatmap-resolution')) this.q('heatmap-resolution').value = String(heatmapResolution);
+        if (this.q('solve-up-to')) this.q('solve-up-to').value = solveUpTo;
+
+        this.lastResult = {
+            expectedValue: State.get(this._tabPath('expectedValue')),
+            optimalAim: State.get(this._tabPath('optimalAim')),
+        };
+    }
+
+    _getDefaults() {
+        const tabDefaults = {
+            maxPoints: {
+                pointsRemaining: 100000,
+                gameMode: this.section.dataset.defaultGameMode || 'finishOnAny',
+                aimSamples: parseInt(this.section.dataset.defaultSamples || '5000', 10),
+                showHeatmap: this.section.dataset.defaultShowHeatmap === 'true',
+                heatmapResolution: parseInt(this.section.dataset.defaultHeatmapResolution || '100', 10),
+                solveUpTo: 170,
+            },
+            minThrows: {
+                pointsRemaining: 501,
+                gameMode: this.section.dataset.defaultGameMode || 'finishOnDouble',
+                aimSamples: parseInt(this.section.dataset.defaultSamples || '5000', 10),
+                showHeatmap: this.section.dataset.defaultShowHeatmap === 'true',
+                heatmapResolution: parseInt(this.section.dataset.defaultHeatmapResolution || '50', 10),
+                solveUpTo: 170,
+            },
+            minRounds: {
+                pointsRemaining: 501,
+                gameMode: this.section.dataset.defaultGameMode || 'finishOnDouble',
+                aimSamples: parseInt(this.section.dataset.defaultSamples || '1000', 10),
+                showHeatmap: this.section.dataset.defaultShowHeatmap === 'true',
+                heatmapResolution: parseInt(this.section.dataset.defaultHeatmapResolution || '30', 10),
+                solveUpTo: 170,
+            },
+        };
+        return tabDefaults[this.solverType];
+    }
+
+    _syncFormToState() {
+        const params = this._readParams();
+        State.set(this._tabPath('gameMode'), params.gameMode);
+        State.set(this._tabPath('pointsRemaining'), params.pointsRemaining);
+        State.set(this._tabPath('aimSamples'), params.samples);
+        State.set(this._tabPath('showHeatmap'), params.showHeatmap);
+        State.set(this._tabPath('heatmapResolution'), params.heatmapResolution);
+
+        const solveUpToInput = this.q('solve-up-to');
+        if (solveUpToInput) {
+            State.set(this._tabPath('solveUpTo'), parseInt(solveUpToInput.value, 10) || 1);
+        }
+
+        State.saveToStorage();
+    }
+
+    _updateCalibrationWarning() {
+        const subtitle = this.q('solver-subtitle');
+        if (!subtitle) return;
+
+        if (!State.get('calibration.covariance')) {
+            subtitle.textContent = 'No calibration data found. A default distribution is being used until you calibrate.';
+            subtitle.style.color = 'var(--red)';
             return;
         }
-        // Otherwise just recompute heatmap with current settings
-        const cov = _getCovariance() || [1600, 0, 0, 1600];
-        const gameMode   = document.getElementById('game-mode').value;
-        const stateVal   = parseInt(document.getElementById('game-state').value, 10);
-        const solverType = document.getElementById('solver-type').value;
-        const samples    = parseInt(document.getElementById('aim-samples').value, 10);
+
+        subtitle.style.color = '';
+        if (this.solverType === 'maxPoints') {
+            subtitle.textContent = 'Find the best place to aim for the highest expected points on your next throw.';
+        } else if (this.solverType === 'minRounds') {
+            subtitle.textContent = 'Use this higher-cost solver for round-level strategy and long batch calculations.';
+        } else {
+            subtitle.textContent = 'Configure points remaining and instantly compute the best aiming strategy.';
+        }
+    }
+
+    _toggleHeatmapResolutionVisibility() {
+        const showHeatmap = this.q('show-heatmap')?.checked;
+        const field = this.q('heatmap-res-field');
+        if (field) field.style.display = showHeatmap ? '' : 'none';
+    }
+
+    _readParams() {
+        const mode = this.q('game-mode')?.value || this.section.dataset.defaultGameMode || 'finishOnDouble';
+        const samplesInput = parseInt(this.q('aim-samples')?.value || '1000', 10);
+        const heatmapResolution = parseInt(this.q('heatmap-resolution')?.value || this.section.dataset.defaultHeatmapResolution || '50', 10);
+        const showHeatmap = this.q('show-heatmap')?.checked ?? false;
+
+        let pointsRemaining;
+        if (this.solverType === 'maxPoints') {
+            pointsRemaining = State.get(this._tabPath('pointsRemaining')) || 100000;
+        } else {
+            pointsRemaining = parseInt(this.q('points-remaining')?.value || '1', 10);
+        }
+
+        return {
+            pointsRemaining,
+            gameMode: mode,
+            samples: Math.max(1, samplesInput || 1),
+            solverType: this.solverType,
+            showHeatmap,
+            heatmapResolution: Math.max(1, heatmapResolution || 1),
+        };
+    }
+
+    _validateParams(params) {
+        if (!Number.isFinite(params.pointsRemaining) || params.pointsRemaining < 1) {
+            alert('Invalid points remaining value.');
+            return false;
+        }
+
+        if ((params.solverType === 'minThrows' || params.solverType === 'minRounds') && params.pointsRemaining > 1000) {
+            alert('Points remaining above 1000 are not supported for this solver.');
+            return false;
+        }
+
+        return true;
+    }
+
+    _clearAutoSolveTimer() {
+        if (this.autoSolveTimer !== null) {
+            clearTimeout(this.autoSolveTimer);
+            this.autoSolveTimer = null;
+        }
+    }
+
+    _scheduleAutoSolve() {
+        if (!this.autoSolve || this.runningBatch) return;
+        this._clearAutoSolveTimer();
+        this.autoSolveTimer = setTimeout(() => {
+            this.autoSolveTimer = null;
+            this.solve({ loadingMessage: 'Solving...' });
+        }, 120);
+    }
+
+    _stepPointsRemaining(delta) {
+        const input = this.q('points-remaining');
+        if (!input) return;
+
+        const current = parseInt(input.value, 10) || 0;
+        const max = parseInt(input.max || '1000', 10);
+        const next = Math.max(1, Math.min(max, current + delta));
+        input.value = String(next);
+
+        this._syncFormToState();
+        if (this.autoSolve) this._scheduleAutoSolve();
+    }
+
+    _onKeyDown(e) {
+        if (!this.section.classList.contains('active')) return;
+        if (!this.q('points-remaining')) return;
+
+        const active = document.activeElement;
+        const isTyping = active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA');
+        if (isTyping) return;
+
+        if (e.key === 'ArrowLeft') {
+            e.preventDefault();
+            this._stepPointsRemaining(-1);
+        } else if (e.key === 'ArrowRight') {
+            e.preventDefault();
+            this._stepPointsRemaining(+1);
+        }
+    }
+
+    _onHeatmapToggle() {
+        this._syncFormToState();
+        this._toggleHeatmapResolutionVisibility();
+
+        if (this.autoSolve) {
+            this._scheduleAutoSolve();
+            return;
+        }
+
+        if (!this.q('show-heatmap')?.checked) {
+            this.cachedHeatmap = null;
+            this.cachedHeatmapBounds = null;
+            this._renderBoard();
+        }
+    }
+
+    _onResolutionChange() {
+        this._syncFormToState();
+        if (this.autoSolve) this._scheduleAutoSolve();
+    }
+
+    _tooltip() {
+        return document.getElementById('heatmap-tooltip');
+    }
+
+    _onCanvasMouseMove(e) {
+        const tip = this._tooltip();
+        if (!this.cachedHeatmap || !this.renderer) {
+            tip.classList.add('hidden');
+            return;
+        }
+
+        const rect = e.currentTarget.getBoundingClientRect();
+        const px = e.clientX - rect.left;
+        const py = e.clientY - rect.top;
+        const val = this.renderer.heatmapValueAt(px, py);
+
+        if (val === null) {
+            tip.classList.add('hidden');
+            return;
+        }
+
+        const label = this.solverType === 'maxPoints'
+            ? `${val.toFixed(2)} pts`
+            : this.solverType === 'minRounds'
+                ? `${val.toFixed(2)} rounds`
+                : `${val.toFixed(2)} throws`;
+
+        tip.textContent = label;
+        tip.style.left = `${e.clientX}px`;
+        tip.style.top = `${e.clientY}px`;
+        tip.classList.remove('hidden');
+    }
+
+    _onCanvasMouseLeave() {
+        this._tooltip().classList.add('hidden');
+    }
+
+    async solve({ loadingMessage = 'Solving...', forceHeatmap = null, showOverlay = true } = {}) {
+        if (this.runningBatch) return false;
+
+        const params = this._readParams();
+        if (!this._validateParams(params)) return false;
+
+        if (showOverlay) {
+            showLoading(loadingMessage);
+            await nextFrame();
+        }
+
         try {
-            await _computeHeatmap(stateVal, cov, gameMode, solverType, samples);
-            _renderBoard();
+            const cov = this._getCovariance();
+            const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+            this.lastResult = result;
+
+            State.set(this._tabPath('optimalAim'), result.optimalAim);
+            State.set(this._tabPath('expectedValue'), result.expectedValue);
+            this._syncFormToState();
+
+            const shouldComputeHeatmap = forceHeatmap ?? params.showHeatmap;
+            if (shouldComputeHeatmap) {
+                if (showOverlay) {
+                    showLoading('Generating heatmap...');
+                    await nextFrame();
+                }
+                const hm = Wasm.heatmap(
+                    params.pointsRemaining,
+                    cov,
+                    params.gameMode,
+                    params.solverType,
+                    params.samples,
+                    params.heatmapResolution,
+                );
+                this.cachedHeatmap = hm.grid;
+                this.cachedHeatmapBounds = hm.bounds;
+            } else {
+                this.cachedHeatmap = null;
+                this.cachedHeatmapBounds = null;
+            }
+
+            this._renderBoard();
+            this._showResults(result);
+            return true;
         } catch (err) {
             console.error(err);
+            alert(`Solve failed: ${err.message}`);
+            return false;
         } finally {
-            _hideLoading();
+            if (showOverlay) hideLoading();
         }
-    } else {
-        cachedHeatmap = null;
-        cachedHeatmapBounds = null;
-        _renderBoard();
+    }
+
+    async solveUpToScore() {
+        if (this.solverType !== 'minRounds' || this.runningBatch) return;
+
+        const limitInput = this.q('solve-up-to');
+        const limit = parseInt(limitInput?.value || '1', 10);
+        if (!Number.isFinite(limit) || limit < 1 || limit > 1000) {
+            alert('Please choose a valid upper score between 1 and 1000.');
+            return;
+        }
+
+        const pointsInput = this.q('points-remaining');
+        if (!pointsInput) return;
+
+        const progressWrap = this.q('batch-progress');
+        const progressText = this.q('batch-progress-text');
+        const progressBar = this.q('batch-progress-bar');
+
+        this.runningBatch = true;
+        this._setControlsDisabled(true);
+
+        if (progressWrap) progressWrap.hidden = false;
+        if (progressBar) {
+            progressBar.max = limit;
+            progressBar.value = 0;
+        }
+
+        try {
+            const cov = this._getCovariance();
+            const base = this._readParams();
+
+            for (let score = 1; score <= limit; score++) {
+                if (progressText) {
+                    progressText.textContent = `Calculating points remaining ${score} / ${limit}`;
+                }
+                if (progressBar) {
+                    progressBar.value = score;
+                }
+                pointsInput.value = String(score);
+
+                const params = {
+                    ...base,
+                    pointsRemaining: score,
+                    showHeatmap: true,
+                };
+
+                const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+                const hm = Wasm.heatmap(
+                    params.pointsRemaining,
+                    cov,
+                    params.gameMode,
+                    params.solverType,
+                    params.samples,
+                    params.heatmapResolution,
+                );
+
+                this.lastResult = result;
+                this.cachedHeatmap = hm.grid;
+                this.cachedHeatmapBounds = hm.bounds;
+
+                State.set(this._tabPath('pointsRemaining'), score);
+                State.set(this._tabPath('optimalAim'), result.optimalAim);
+                State.set(this._tabPath('expectedValue'), result.expectedValue);
+                State.saveToStorage();
+
+                this._renderBoard();
+                this._showResults(result);
+                await yieldToUi();
+            }
+
+            if (progressText) {
+                progressText.textContent = `Finished up to ${limit}.`;
+            }
+        } catch (err) {
+            console.error(err);
+            alert(`Batch solve failed: ${err.message}`);
+        } finally {
+            this.runningBatch = false;
+            this._setControlsDisabled(false);
+            if (progressWrap) progressWrap.hidden = true;
+        }
+    }
+
+    _setControlsDisabled(disabled) {
+        const controls = this.section.querySelectorAll('button, input, select');
+        controls.forEach((el) => {
+            if (el.dataset.role === 'batch-progress-bar') return;
+            el.disabled = disabled;
+        });
+    }
+
+    _renderBoard() {
+        const aim = this.lastResult?.optimalAim || State.get(this._tabPath('optimalAim'));
+        if (!this.renderer) return;
+
+        this.renderer.render({
+            aimPoint: aim,
+            heatmap: this.cachedHeatmap,
+            heatmapBounds: this.cachedHeatmapBounds,
+            invertColors: this.solverType === 'maxPoints',
+        });
+    }
+
+    _showResults(result) {
+        const panel = this.q('solve-results');
+        if (!panel || !result) return;
+
+        const valueLabel = this.solverType === 'maxPoints'
+            ? 'Expected points'
+            : this.solverType === 'minRounds'
+                ? 'Expected rounds'
+                : 'Expected throws';
+
+        panel.innerHTML = `
+            <p class="result-line">${valueLabel}: <span class="value">${result.expectedValue.toFixed(3)}</span></p>
+            <p class="result-line">Optimal aim: <span class="value">(${result.optimalAim.x.toFixed(1)}, ${result.optimalAim.y.toFixed(1)})</span></p>
+        `;
+    }
+
+    _resizeCanvas(canvas) {
+        const wrap = canvas.parentElement;
+        const maxW = wrap.clientWidth - 24;
+        const maxH = wrap.clientHeight - 24;
+        const size = Math.max(400, Math.min(maxW, maxH));
+        canvas.width = size;
+        canvas.height = size;
     }
 }
 
-/** Handle a change to the heatmap resolution selector: persist and refresh the heatmap. */
-async function _onResChange() {
-    State.set('solver.heatmapResolution', parseInt(document.getElementById('heatmap-resolution').value, 10));
-
-    // Refresh heatmap immediately if it's currently shown
-    if (document.getElementById('show-heatmap').checked && State.get('solver.optimalAim')) {
-        const cov = _getCovariance() || [1600, 0, 0, 1600];
-        const gameMode   = document.getElementById('game-mode').value;
-        const stateVal   = parseInt(document.getElementById('game-state').value, 10);
-        const solverType = document.getElementById('solver-type').value;
-        const samples    = parseInt(document.getElementById('aim-samples').value, 10);
-        try {
-            await _computeHeatmap(stateVal, cov, gameMode, solverType, samples);
-            _renderBoard();
-        } catch (err) {
-            console.error(err);
-        } finally {
-            _hideLoading();
-        }
-    }
-}
-
-/* --- loading overlay (CSS handles 500ms fade-in delay) --- */
-
-/**
- * Show the loading overlay with a status message.
- * @param {string} msg Message to display.
- */
-function _showLoading(msg) {
+function showLoading(msg) {
     document.getElementById('loading-message').textContent = msg;
     const overlay = document.getElementById('loading-overlay');
     overlay.classList.remove('hidden');
-    // Reset animation so the delay re-triggers each time
     overlay.style.animation = 'none';
-    overlay.offsetHeight; // force reflow
+    overlay.offsetHeight;
     overlay.style.animation = '';
 }
-/** Hide the loading overlay. */
-function _hideLoading() {
+
+function hideLoading() {
     document.getElementById('loading-overlay').classList.add('hidden');
 }
-/** Returns a promise that resolves after two animation frames, allowing the DOM to repaint.
- * @returns {Promise<void>}
- */
-function _nextFrame() {
-    return new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+
+function nextFrame() {
+    return new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 }
 
-/** Size the canvas internal resolution to match its CSS display size. */
-function _resizeCanvas(canvas) {
-    const wrap = canvas.parentElement;
-    const maxW = wrap.clientWidth - 24;
-    const maxH = wrap.clientHeight - 24;
-    const size = Math.max(400, Math.min(maxW, maxH));
-    canvas.width = size;
-    canvas.height = size;
+function yieldToUi() {
+    return new Promise((resolve) => setTimeout(resolve, 0));
 }

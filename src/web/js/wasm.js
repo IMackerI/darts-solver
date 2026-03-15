@@ -124,11 +124,11 @@ function _ensureObjects(covFlat, gameMode, solverType, samples) {
 /* ---- public API ---- */
 
 /**
- * Solve a single state. Returns { expectedValue, optimalAim: {x,y} }.
+ * Solve a single points-remaining value. Returns { expectedValue, optimalAim: {x,y} }.
  */
-export function solve(stateVal, covFlat, gameMode, solverType, samples) {
+export function solve(pointsRemaining, covFlat, gameMode, solverType, samples) {
     _ensureObjects(covFlat, gameMode, solverType, samples);
-    const res = module.solverSolve(_solver, stateVal);
+    const res = module.solverSolve(_solver, pointsRemaining);
     return {
         expectedValue: res.expected_throws,
         optimalAim: { x: res.optimal_aim.x, y: res.optimal_aim.y },
@@ -138,14 +138,14 @@ export function solve(stateVal, covFlat, gameMode, solverType, samples) {
 /**
  * Generate heatmap grid. Returns { grid: Float64Array-like, rows, cols, bounds }.
  */
-export function heatmap(stateVal, covFlat, gameMode, solverType, samples, resolution) {
+export function heatmap(pointsRemaining, covFlat, gameMode, solverType, samples, resolution) {
     _ensureObjects(covFlat, gameMode, solverType, samples);
     if (!_heatVis || _heatVis._res !== resolution) {
         _heatVis?.delete();
         _heatVis = new module.HeatMapVisualizer(_solver, resolution, resolution);
         _heatVis._res = resolution;
     }
-    const hm = _heatVis.heat_map(stateVal);
+    const hm = _heatVis.heat_map(pointsRemaining);
     const rows = hm.size();
     const cols = rows > 0 ? hm.get(0).size() : 0;
 
