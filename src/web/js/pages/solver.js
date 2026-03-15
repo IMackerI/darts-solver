@@ -51,6 +51,8 @@ class SolverTabController {
         this.abortController = null;
         this.autoSolveTimer = null;
         this.runningBatch = false;
+        this.isSolving = false;
+        this.cancelRequested = false;
     }
 
     q(role) {
@@ -71,6 +73,8 @@ class SolverTabController {
 
         this._restoreFormFromState();
         this._toggleHeatmapResolutionVisibility();
+        this._updateSolveUpToButtonLabel();
+        this._setCancelButtonVisible(false);
 
         if (!this.mounted) {
             this._attachListeners();
@@ -131,11 +135,17 @@ class SolverTabController {
             this.solveUpToScore();
         }, opts);
 
+        this.q('btn-cancel-solve')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this._requestCancel();
+        }, opts);
+
         const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to'];
         for (const role of trackedRoles) {
             this.q(role)?.addEventListener('change', (e) => {
                 e.target.blur();
                 this._syncFormToState();
+                if (role === 'solve-up-to') this._updateSolveUpToButtonLabel();
                 if (this.autoSolve) this._scheduleAutoSolve();
             }, opts);
         }
@@ -245,9 +255,8 @@ class SolverTabController {
     }
 
     _toggleHeatmapResolutionVisibility() {
-        const showHeatmap = this.q('show-heatmap')?.checked;
         const field = this.q('heatmap-res-field');
-        if (field) field.style.display = showHeatmap ? '' : 'none';
+        if (field) field.style.display = '';
     }
 
     _readParams() {
@@ -335,7 +344,6 @@ class SolverTabController {
 
     _onHeatmapToggle() {
         this._syncFormToState();
-        this._toggleHeatmapResolutionVisibility();
 
         if (this.autoSolve) {
             this._scheduleAutoSolve();
@@ -356,6 +364,35 @@ class SolverTabController {
 
     _tooltip() {
         return document.getElementById('heatmap-tooltip');
+    }
+
+    _hideTooltip() {
+        this._tooltip().classList.add('hidden');
+    }
+
+    _requestCancel() {
+        this.cancelRequested = true;
+        const cancelBtn = this.q('btn-cancel-solve');
+        if (cancelBtn) {
+            cancelBtn.setAttribute('disabled', 'disabled');
+            cancelBtn.textContent = 'Cancelling...';
+        }
+        const progressText = this.q('batch-progress-text');
+        if (progressText) {
+            progressText.textContent = 'Cancelling after current computation...';
+        }
+    }
+
+    _updateSolveUpToButtonLabel() {
+        const btn = this.q('btn-solve-up-to');
+        const input = this.q('solve-up-to');
+        if (!btn || !input) return;
+        const value = parseInt(input.value || '0', 10);
+        if (Number.isFinite(value) && value >= 1) {
+            btn.textContent = `Solve up to ${value}`;
+        } else {
+            btn.textContent = 'Solve up to a score';
+        }
     }
 
     _onCanvasMouseMove(e) {
@@ -392,19 +429,27 @@ class SolverTabController {
     }
 
     async solve({ loadingMessage = 'Solving...', forceHeatmap = null, showOverlay = true } = {}) {
-        if (this.runningBatch) return false;
+        if (this.runningBatch || this.isSolving) return false;
 
         const params = this._readParams();
         if (!this._validateParams(params)) return false;
 
+        this.isSolving = true;
+        this.cancelRequested = false;
+        this._setNavigationDisabled(true);
+        this._hideTooltip();
+        this._setCancelButtonVisible(false);
+
         if (showOverlay) {
             showLoading(loadingMessage);
             await nextFrame();
+            if (this.cancelRequested) return false;
         }
 
         try {
             const cov = this._getCovariance();
             const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+            if (this.cancelRequested) return false;
             this.lastResult = result;
 
             State.set(this._tabPath('optimalAim'), result.optimalAim);
@@ -416,6 +461,7 @@ class SolverTabController {
                 if (showOverlay) {
                     showLoading('Generating heatmap...');
                     await nextFrame();
+                    if (this.cancelRequested) return false;
                 }
                 const hm = Wasm.heatmap(
                     params.pointsRemaining,
@@ -440,12 +486,16 @@ class SolverTabController {
             alert(`Solve failed: ${err.message}`);
             return false;
         } finally {
+            this.isSolving = false;
+            this.cancelRequested = false;
+            this._setCancelButtonVisible(false);
+            this._setNavigationDisabled(false);
             if (showOverlay) hideLoading();
         }
     }
 
     async solveUpToScore() {
-        if (this.solverType !== 'minRounds' || this.runningBatch) return;
+        if (this.solverType !== 'minRounds' || this.runningBatch || this.isSolving) return;
 
         const limitInput = this.q('solve-up-to');
         const limit = parseInt(limitInput?.value || '1', 10);
@@ -462,7 +512,12 @@ class SolverTabController {
         const progressBar = this.q('batch-progress-bar');
 
         this.runningBatch = true;
+        this.isSolving = true;
+        this.cancelRequested = false;
         this._setControlsDisabled(true);
+        this._setCancelButtonVisible(true);
+        this._setNavigationDisabled(true);
+        this._hideTooltip();
 
         if (progressWrap) progressWrap.hidden = false;
         if (progressBar) {
@@ -475,6 +530,12 @@ class SolverTabController {
             const base = this._readParams();
 
             for (let score = 1; score <= limit; score++) {
+                if (this.cancelRequested) {
+                    if (progressText) {
+                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
+                    }
+                    break;
+                }
                 if (progressText) {
                     progressText.textContent = `Calculating points remaining ${score} / ${limit}`;
                 }
@@ -483,6 +544,15 @@ class SolverTabController {
                 }
                 pointsInput.value = String(score);
 
+                // Yield before each heavy phase so cancel clicks get processed quickly.
+                await yieldToUi();
+                if (this.cancelRequested) {
+                    if (progressText) {
+                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
+                    }
+                    break;
+                }
+
                 const params = {
                     ...base,
                     pointsRemaining: score,
@@ -490,6 +560,21 @@ class SolverTabController {
                 };
 
                 const result = Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+                await yieldToUi();
+                if (this.cancelRequested) {
+                    if (progressText) {
+                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
+                    }
+                    break;
+                }
+
+                await yieldToUi();
+                if (this.cancelRequested) {
+                    if (progressText) {
+                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
+                    }
+                    break;
+                }
                 const hm = Wasm.heatmap(
                     params.pointsRemaining,
                     cov,
@@ -513,7 +598,7 @@ class SolverTabController {
                 await yieldToUi();
             }
 
-            if (progressText) {
+            if (progressText && !this.cancelRequested) {
                 progressText.textContent = `Finished up to ${limit}.`;
             }
         } catch (err) {
@@ -521,9 +606,38 @@ class SolverTabController {
             alert(`Batch solve failed: ${err.message}`);
         } finally {
             this.runningBatch = false;
+            this.isSolving = false;
+            this.cancelRequested = false;
             this._setControlsDisabled(false);
+            this._setCancelButtonVisible(false);
+            this._setNavigationDisabled(false);
             if (progressWrap) progressWrap.hidden = true;
         }
+    }
+
+    _setCancelButtonVisible(visible) {
+        const btn = this.q('btn-cancel-solve');
+        if (!btn) return;
+        if (visible) {
+            btn.textContent = 'Cancel solve';
+            btn.removeAttribute('disabled');
+        } else {
+            btn.textContent = 'Cancel solve';
+            btn.setAttribute('disabled', 'disabled');
+        }
+    }
+
+    _setNavigationDisabled(disabled) {
+        document.querySelectorAll('.nav-link').forEach((link) => {
+            link.classList.toggle('nav-link-disabled', disabled);
+            if (disabled) {
+                link.setAttribute('aria-disabled', 'true');
+                link.setAttribute('tabindex', '-1');
+            } else {
+                link.removeAttribute('aria-disabled');
+                link.removeAttribute('tabindex');
+            }
+        });
     }
 
     _setControlsDisabled(disabled) {
@@ -535,6 +649,7 @@ class SolverTabController {
     }
 
     _renderBoard() {
+        this._hideTooltip();
         const aim = this.lastResult?.optimalAim || State.get(this._tabPath('optimalAim'));
         if (!this.renderer) return;
 

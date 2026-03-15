@@ -77,6 +77,10 @@ async function init() {
         link.addEventListener('click', (e) => {
             const href = link.getAttribute('href');
             if (!href) return;
+            if (link.classList.contains('nav-link-disabled')) {
+                e.preventDefault();
+                return;
+            }
             e.preventDefault();
             if (location.hash !== href) {
                 location.hash = href;

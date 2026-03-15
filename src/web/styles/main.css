@@ -137,6 +137,12 @@ body { display: flex; }
 }
 .nav-link.active .nav-icon { opacity: 1; color: var(--accent); }
 
+.nav-link.nav-link-disabled {
+    opacity: .45;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 .sidebar-footer { margin-top: auto; padding: 16px; }
 .status {
     font-size: .75rem;
