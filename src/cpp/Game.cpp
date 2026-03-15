@@ -34,6 +34,10 @@ Game::HitDistribution Game::throw_at_distribution_(Vec2 p) const {
     return throw_at_cache_.at(p);
 }
 
+Game::HitDistribution Game::throw_at_distribution(Vec2 p) const {
+    return throw_at_distribution_(p);
+}
+
 Game::Game(const Target& target, const Distribution& distribution) 
     : target_(target), distribution_(distribution) {}
 
