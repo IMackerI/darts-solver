@@ -29,6 +29,8 @@ const state = {
         },
         minRounds: {
             pointsRemaining: 501,
+            roundStartScore: 501,
+            throwNumber: 1,
             gameMode: 'finishOnDouble',
             aimSamples: 1000,
             showHeatmap: false,
@@ -135,6 +137,8 @@ export function loadFromStorage() {
         if (!state.solverTabs.minRounds || typeof state.solverTabs.minRounds !== 'object') {
             state.solverTabs.minRounds = {
                 pointsRemaining: 501,
+                roundStartScore: 501,
+                throwNumber: 1,
                 gameMode: 'finishOnDouble',
                 aimSamples: 1000,
                 showHeatmap: false,

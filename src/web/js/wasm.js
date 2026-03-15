@@ -273,10 +273,31 @@ function _ensureObjects(covFlat, gameMode, solverType, samples) {
  * Solve a single points-remaining value. Returns { expectedValue, optimalAim: {x,y} }.
  */
 export async function solve(pointsRemaining, covFlat, gameMode, solverType, samples) {
-    return _solveAsync(pointsRemaining, covFlat, gameMode, solverType, samples);
+    return _solveAsync(pointsRemaining, covFlat, gameMode, solverType, samples, null);
 }
 
-async function _solveAsync(pointsRemaining, covFlat, gameMode, solverType, samples) {
+function _normalizeMinRoundsState(pointsRemaining, solverType, minRoundsState) {
+    if (solverType !== 'minRounds') return null;
+    const fallbackCurrent = Number(pointsRemaining) || 1;
+    const state = minRoundsState || {};
+    const roundStartScore = Number(state.roundStartScore) || fallbackCurrent;
+    const throwNumberRaw = Number(state.throwNumber);
+    const throwNumber = Number.isFinite(throwNumberRaw)
+        ? Math.max(1, Math.min(3, Math.floor(throwNumberRaw)))
+        : 1;
+    return {
+        roundStartScore,
+        currentScore: fallbackCurrent,
+        throwNumber,
+    };
+}
+
+export async function solveWithRoundState(pointsRemaining, covFlat, gameMode, solverType, samples, minRoundsState) {
+    return _solveAsync(pointsRemaining, covFlat, gameMode, solverType, samples, minRoundsState);
+}
+
+async function _solveAsync(pointsRemaining, covFlat, gameMode, solverType, samples, minRoundsState) {
+    const normalizedRoundState = _normalizeMinRoundsState(pointsRemaining, solverType, minRoundsState);
     if (workerEnabled) {
         return _workerRequest('solve', {
             pointsRemaining,
@@ -284,11 +305,19 @@ async function _solveAsync(pointsRemaining, covFlat, gameMode, solverType, sampl
             gameMode,
             solverType,
             samples,
+            minRoundsState: normalizedRoundState,
         });
     }
 
     _ensureObjects(covFlat, gameMode, solverType, samples);
-    const res = module.solverSolve(_solver, pointsRemaining);
+    const res = solverType === 'minRounds' && normalizedRoundState
+        ? module.solverSolveMinRoundsRoundState(
+            _solver,
+            normalizedRoundState.roundStartScore,
+            normalizedRoundState.currentScore,
+            normalizedRoundState.throwNumber,
+        )
+        : module.solverSolve(_solver, pointsRemaining);
     return {
         expectedValue: res.expected_throws,
         optimalAim: { x: res.optimal_aim.x, y: res.optimal_aim.y },
@@ -299,10 +328,15 @@ async function _solveAsync(pointsRemaining, covFlat, gameMode, solverType, sampl
  * Generate heatmap grid. Returns { grid: Float64Array-like, rows, cols, bounds }.
  */
 export async function heatmap(pointsRemaining, covFlat, gameMode, solverType, samples, resolution) {
-    return _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, samples, resolution);
+    return _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, samples, resolution, null);
 }
 
-async function _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, samples, resolution) {
+export async function heatmapWithRoundState(pointsRemaining, covFlat, gameMode, solverType, samples, resolution, minRoundsState) {
+    return _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, samples, resolution, minRoundsState);
+}
+
+async function _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, samples, resolution, minRoundsState) {
+    const normalizedRoundState = _normalizeMinRoundsState(pointsRemaining, solverType, minRoundsState);
     if (workerEnabled) {
         return _workerRequest('heatmap', {
             pointsRemaining,
@@ -311,26 +345,51 @@ async function _heatmapAsync(pointsRemaining, covFlat, gameMode, solverType, sam
             solverType,
             samples,
             resolution,
+            minRoundsState: normalizedRoundState,
         });
     }
 
     _ensureObjects(covFlat, gameMode, solverType, samples);
-    if (!_heatVis || _heatVis._res !== resolution) {
-        _heatVis?.delete();
-        _heatVis = new module.HeatMapVisualizer(_solver, resolution, resolution);
-        _heatVis._res = resolution;
-    }
-    const hm = _heatVis.heat_map(pointsRemaining);
-    const rows = hm.size();
-    const cols = rows > 0 ? hm.get(0).size() : 0;
+    let rows;
+    let cols;
+    let grid;
 
-    // Copy into plain JS 2D array.
-    const grid = [];
-    for (let r = 0; r < rows; r++) {
-        const row = hm.get(r);
-        const arr = new Array(cols);
-        for (let c = 0; c < cols; c++) arr[c] = row.get(c);
-        grid.push(arr);
+    if (solverType === 'minRounds' && normalizedRoundState) {
+        const hm = module.solverHeatMapMinRoundsRoundState(
+            _solver,
+            normalizedRoundState.roundStartScore,
+            normalizedRoundState.currentScore,
+            normalizedRoundState.throwNumber,
+            resolution,
+            resolution,
+        );
+        rows = hm.size();
+        cols = rows > 0 ? hm.get(0).size() : 0;
+        grid = [];
+        for (let r = 0; r < rows; r++) {
+            const row = hm.get(r);
+            const arr = new Array(cols);
+            for (let c = 0; c < cols; c++) arr[c] = row.get(c);
+            grid.push(arr);
+        }
+    } else {
+        if (!_heatVis || _heatVis._res !== resolution) {
+            _heatVis?.delete();
+            _heatVis = new module.HeatMapVisualizer(_solver, resolution, resolution);
+            _heatVis._res = resolution;
+        }
+        const hm = _heatVis.heat_map(pointsRemaining);
+        rows = hm.size();
+        cols = rows > 0 ? hm.get(0).size() : 0;
+
+        // Copy into plain JS 2D array.
+        grid = [];
+        for (let r = 0; r < rows; r++) {
+            const row = hm.get(r);
+            const arr = new Array(cols);
+            for (let c = 0; c < cols; c++) arr[c] = row.get(c);
+            grid.push(arr);
+        }
     }
 
     const bounds = _game.get_target_bounds();

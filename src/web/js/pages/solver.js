@@ -7,6 +7,8 @@ import * as State from '../state.js';
 import * as Wasm from '../wasm.js';
 
 const DEFAULT_COVARIANCE = [1600, 0, 0, 1600];
+const MAX_SOLVE_CACHE = 2000;
+const MAX_HEATMAP_CACHE = 48;
 const instances = new Map();
 let activeInstance = null;
 
@@ -45,6 +47,9 @@ class SolverTabController {
 
         this.cachedHeatmap = null;
         this.cachedHeatmapBounds = null;
+        this.currentHeatmapKey = null;
+        this.solveCache = new Map();
+        this.heatmapCache = new Map();
 
         this.lastResult = null;
         this.mounted = false;
@@ -98,6 +103,7 @@ class SolverTabController {
 
         this.cachedHeatmap = null;
         this.cachedHeatmapBounds = null;
+        this.currentHeatmapKey = null;
     }
 
     _attachListeners() {
@@ -125,6 +131,16 @@ class SolverTabController {
             this._stepPointsRemaining(+1);
         }, opts);
 
+        this.q('btn-throw-prev')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this._stepThrowNumber(-1);
+        }, opts);
+
+        this.q('btn-throw-next')?.addEventListener('click', (e) => {
+            e.target.blur();
+            this._stepThrowNumber(+1);
+        }, opts);
+
         this.q('btn-solve')?.addEventListener('click', (e) => {
             e.target.blur();
             this.solve({ loadingMessage: 'Solving...' });
@@ -140,7 +156,7 @@ class SolverTabController {
             this._requestCancel();
         }, opts);
 
-        const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to'];
+        const trackedRoles = ['game-mode', 'points-remaining', 'aim-samples', 'solve-up-to', 'round-start-score'];
         for (const role of trackedRoles) {
             this.q(role)?.addEventListener('change', (e) => {
                 e.target.blur();
@@ -179,6 +195,8 @@ class SolverTabController {
         const showHeatmap = State.get(this._tabPath('showHeatmap')) ?? defaults.showHeatmap;
         const heatmapResolution = State.get(this._tabPath('heatmapResolution')) ?? defaults.heatmapResolution;
         const solveUpTo = State.get(this._tabPath('solveUpTo')) ?? defaults.solveUpTo;
+        const throwNumber = State.get(this._tabPath('throwNumber')) ?? defaults.throwNumber;
+        const roundStartScore = State.get(this._tabPath('roundStartScore')) ?? defaults.roundStartScore;
 
         if (this.q('game-mode')) this.q('game-mode').value = gameMode;
         if (this.q('points-remaining')) this.q('points-remaining').value = pointsRemaining;
@@ -186,6 +204,10 @@ class SolverTabController {
         if (this.q('show-heatmap')) this.q('show-heatmap').checked = showHeatmap;
         if (this.q('heatmap-resolution')) this.q('heatmap-resolution').value = String(heatmapResolution);
         if (this.q('solve-up-to')) this.q('solve-up-to').value = solveUpTo;
+        if (this.q('throw-number')) this.q('throw-number').value = throwNumber;
+        if (this.q('round-start-score')) this.q('round-start-score').value = roundStartScore;
+
+        this._syncMinRoundsRoundStateControls();
 
         this.lastResult = {
             expectedValue: State.get(this._tabPath('expectedValue')),
@@ -213,6 +235,8 @@ class SolverTabController {
             },
             minRounds: {
                 pointsRemaining: 501,
+                roundStartScore: 501,
+                throwNumber: 1,
                 gameMode: this.section.dataset.defaultGameMode || 'finishOnDouble',
                 aimSamples: parseInt(this.section.dataset.defaultSamples || '1000', 10),
                 showHeatmap: this.section.dataset.defaultShowHeatmap === 'true',
@@ -230,13 +254,155 @@ class SolverTabController {
         State.set(this._tabPath('aimSamples'), params.samples);
         State.set(this._tabPath('showHeatmap'), params.showHeatmap);
         State.set(this._tabPath('heatmapResolution'), params.heatmapResolution);
+        if (this.solverType === 'minRounds') {
+            State.set(this._tabPath('throwNumber'), params.minRoundsState.throwNumber);
+            State.set(this._tabPath('roundStartScore'), params.minRoundsState.roundStartScore);
+        }
 
         const solveUpToInput = this.q('solve-up-to');
         if (solveUpToInput) {
             State.set(this._tabPath('solveUpTo'), parseInt(solveUpToInput.value, 10) || 1);
         }
 
+        this._dropStaleDisplayedHeatmap(params);
         State.saveToStorage();
+    }
+
+    _setCacheEntry(cache, key, value, maxSize) {
+        if (cache.has(key)) {
+            cache.delete(key);
+        }
+        cache.set(key, value);
+        while (cache.size > maxSize) {
+            const oldestKey = cache.keys().next().value;
+            cache.delete(oldestKey);
+        }
+    }
+
+    _roundStatePart(params) {
+        if (params.solverType !== 'minRounds' || !params.minRoundsState) {
+            return 'nostate';
+        }
+        const state = params.minRoundsState;
+        return `${state.roundStartScore}:${params.pointsRemaining}:${state.throwNumber}`;
+    }
+
+    _solveCacheKey(params, cov) {
+        const covKey = (cov || []).join(',');
+        return [
+            params.solverType,
+            params.gameMode,
+            params.samples,
+            params.pointsRemaining,
+            this._roundStatePart(params),
+            covKey,
+        ].join('|');
+    }
+
+    _heatmapCacheKey(params, cov) {
+        const covKey = (cov || []).join(',');
+        return [
+            params.solverType,
+            params.gameMode,
+            params.samples,
+            params.heatmapResolution,
+            params.pointsRemaining,
+            this._roundStatePart(params),
+            covKey,
+        ].join('|');
+    }
+
+    _dropStaleDisplayedHeatmap(params) {
+        if (this.isSolving || this.runningBatch || !this.currentHeatmapKey) return;
+        if (!params.showHeatmap) {
+            this.cachedHeatmap = null;
+            this.cachedHeatmapBounds = null;
+            this.currentHeatmapKey = null;
+            this._renderBoard();
+            return;
+        }
+
+        const cov = this._getCovariance();
+        const requestedKey = this._heatmapCacheKey(params, cov);
+        if (requestedKey !== this.currentHeatmapKey) {
+            this.cachedHeatmap = null;
+            this.cachedHeatmapBounds = null;
+            this.currentHeatmapKey = null;
+            this._renderBoard();
+        }
+    }
+
+    async _fetchSolveResult(params, cov) {
+        const key = this._solveCacheKey(params, cov);
+        const cached = this.solveCache.get(key);
+        if (cached) return cached;
+
+        const result = params.solverType === 'minRounds'
+            ? await Wasm.solveWithRoundState(
+                params.pointsRemaining,
+                cov,
+                params.gameMode,
+                params.solverType,
+                params.samples,
+                params.minRoundsState,
+            )
+            : await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+
+        this._setCacheEntry(this.solveCache, key, result, MAX_SOLVE_CACHE);
+        return result;
+    }
+
+    async _fetchHeatmap(params, cov) {
+        const key = this._heatmapCacheKey(params, cov);
+        const cached = this.heatmapCache.get(key);
+        if (cached) return { key, hm: cached };
+
+        const hm = params.solverType === 'minRounds'
+            ? await Wasm.heatmapWithRoundState(
+                params.pointsRemaining,
+                cov,
+                params.gameMode,
+                params.solverType,
+                params.samples,
+                params.heatmapResolution,
+                params.minRoundsState,
+            )
+            : await Wasm.heatmap(
+                params.pointsRemaining,
+                cov,
+                params.gameMode,
+                params.solverType,
+                params.samples,
+                params.heatmapResolution,
+            );
+
+        this._setCacheEntry(this.heatmapCache, key, hm, MAX_HEATMAP_CACHE);
+        return { key, hm };
+    }
+
+    _batchStatesForScore(base, score) {
+        const requestedThrow = base.minRoundsState?.throwNumber || 1;
+        const preferredRoundStart = base.minRoundsState?.roundStartScore || score;
+        const sharedRoundStart = Math.max(score, preferredRoundStart);
+
+        const states = [
+            {
+                throwNumber: 1,
+                roundStartScore: score,
+            },
+            {
+                throwNumber: 2,
+                roundStartScore: sharedRoundStart,
+            },
+            {
+                throwNumber: 3,
+                roundStartScore: sharedRoundStart,
+            },
+        ];
+
+        let displayIndex = states.findIndex((s) => s.throwNumber === requestedThrow);
+        if (displayIndex < 0) displayIndex = 0;
+        return { states, displayIndex };
     }
 
     _updateCalibrationWarning() {
@@ -284,6 +450,22 @@ class SolverTabController {
             solverType: this.solverType,
             showHeatmap,
             heatmapResolution: Math.max(1, heatmapResolution || 1),
+            minRoundsState: this._readMinRoundsState(pointsRemaining),
+        };
+    }
+
+    _readMinRoundsState(pointsRemaining) {
+        if (this.solverType !== 'minRounds') return null;
+        const throwInput = this.q('throw-number');
+        const roundStartInput = this.q('round-start-score');
+        const throwNumber = Math.max(1, Math.min(3, parseInt(throwInput?.value || '1', 10) || 1));
+        let roundStartScore = parseInt(roundStartInput?.value || String(pointsRemaining), 10) || pointsRemaining;
+        if (throwNumber === 1) {
+            roundStartScore = pointsRemaining;
+        }
+        return {
+            throwNumber,
+            roundStartScore,
         };
     }
 
@@ -296,6 +478,23 @@ class SolverTabController {
         if ((params.solverType === 'minThrows' || params.solverType === 'minRounds') && params.pointsRemaining > 1000) {
             alert('Points remaining above 1000 are not supported for this solver.');
             return false;
+        }
+
+        if (params.solverType === 'minRounds') {
+            const throwNumber = params.minRoundsState.throwNumber;
+            const roundStartScore = params.minRoundsState.roundStartScore;
+            if (!Number.isFinite(throwNumber) || throwNumber < 1 || throwNumber > 3) {
+                alert('Throw in round must be between 1 and 3.');
+                return false;
+            }
+            if (!Number.isFinite(roundStartScore) || roundStartScore < 1 || roundStartScore > 1000) {
+                alert('Round start score must be between 1 and 1000.');
+                return false;
+            }
+            if (roundStartScore < params.pointsRemaining) {
+                alert('Round start score must be greater than or equal to points remaining.');
+                return false;
+            }
         }
 
         return true;
@@ -325,9 +524,41 @@ class SolverTabController {
         const max = parseInt(input.max || '1000', 10);
         const next = Math.max(1, Math.min(max, current + delta));
         input.value = String(next);
+        this._syncMinRoundsRoundStateControls();
 
         this._syncFormToState();
         if (this.autoSolve) this._scheduleAutoSolve();
+    }
+
+    _stepThrowNumber(delta) {
+        if (this.solverType !== 'minRounds') return;
+        const input = this.q('throw-number');
+        if (!input) return;
+
+        const current = parseInt(input.value, 10) || 1;
+        const next = Math.max(1, Math.min(3, current + delta));
+        input.value = String(next);
+        this._syncMinRoundsRoundStateControls();
+        this._syncFormToState();
+        if (this.autoSolve) this._scheduleAutoSolve();
+    }
+
+    _syncMinRoundsRoundStateControls() {
+        if (this.solverType !== 'minRounds') return;
+        const throwInput = this.q('throw-number');
+        const pointsInput = this.q('points-remaining');
+        const roundStartInput = this.q('round-start-score');
+        if (!throwInput || !pointsInput || !roundStartInput) return;
+
+        const throwNumber = Math.max(1, Math.min(3, parseInt(throwInput.value, 10) || 1));
+        throwInput.value = String(throwNumber);
+
+        if (throwNumber === 1) {
+            roundStartInput.value = pointsInput.value;
+            roundStartInput.setAttribute('disabled', 'disabled');
+        } else {
+            roundStartInput.removeAttribute('disabled');
+        }
     }
 
     _onKeyDown(e) {
@@ -453,7 +684,7 @@ class SolverTabController {
 
         try {
             const cov = this._getCovariance();
-            const result = await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
+            const result = await this._fetchSolveResult(params, cov);
             if (this.cancelRequested) return false;
             this.lastResult = result;
 
@@ -468,20 +699,15 @@ class SolverTabController {
                     await nextFrame();
                     if (this.cancelRequested) return false;
                 }
-                const hm = await Wasm.heatmap(
-                    params.pointsRemaining,
-                    cov,
-                    params.gameMode,
-                    params.solverType,
-                    params.samples,
-                    params.heatmapResolution,
-                );
+                const { key, hm } = await this._fetchHeatmap(params, cov);
                 if (this.cancelRequested) return false;
                 this.cachedHeatmap = hm.grid;
                 this.cachedHeatmapBounds = hm.bounds;
+                this.currentHeatmapKey = key;
             } else {
                 this.cachedHeatmap = null;
                 this.cachedHeatmapBounds = null;
+                this.currentHeatmapKey = null;
             }
 
             this._renderBoard();
@@ -559,14 +785,39 @@ class SolverTabController {
                     break;
                 }
 
-                const params = {
-                    ...base,
-                    pointsRemaining: score,
-                    showHeatmap: true,
-                };
+                const { states, displayIndex } = this._batchStatesForScore(base, score);
+                let selectedResult = null;
+                let selectedHeatmap = null;
+                let selectedHeatmapKey = null;
 
-                const result = await Wasm.solve(params.pointsRemaining, cov, params.gameMode, params.solverType, params.samples);
-                await yieldToUi();
+                for (let idx = 0; idx < states.length; idx++) {
+                    const state = states[idx];
+                    const params = {
+                        ...base,
+                        pointsRemaining: score,
+                        showHeatmap: true,
+                        minRoundsState: state,
+                    };
+
+                    if (progressText) {
+                        progressText.textContent = `Calculating points ${score}/${limit}, throw ${state.throwNumber}/3`;
+                    }
+
+                    const result = await this._fetchSolveResult(params, cov);
+                    await yieldToUi();
+                    if (this.cancelRequested) break;
+
+                    const { key, hm } = await this._fetchHeatmap(params, cov);
+                    await yieldToUi();
+                    if (this.cancelRequested) break;
+
+                    if (idx === displayIndex) {
+                        selectedResult = result;
+                        selectedHeatmap = hm;
+                        selectedHeatmapKey = key;
+                    }
+                }
+
                 if (this.cancelRequested) {
                     if (progressText) {
                         progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
@@ -574,39 +825,22 @@ class SolverTabController {
                     break;
                 }
 
-                await yieldToUi();
-                if (this.cancelRequested) {
-                    if (progressText) {
-                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
-                    }
-                    break;
+                if (selectedResult && selectedHeatmap) {
+                    this.lastResult = selectedResult;
+                    this.cachedHeatmap = selectedHeatmap.grid;
+                    this.cachedHeatmapBounds = selectedHeatmap.bounds;
+                    this.currentHeatmapKey = selectedHeatmapKey;
                 }
-                const hm = await Wasm.heatmap(
-                    params.pointsRemaining,
-                    cov,
-                    params.gameMode,
-                    params.solverType,
-                    params.samples,
-                    params.heatmapResolution,
-                );
-                if (this.cancelRequested) {
-                    if (progressText) {
-                        progressText.textContent = `Cancelled at ${Math.max(1, score - 1)} / ${limit}.`;
-                    }
-                    break;
-                }
-
-                this.lastResult = result;
-                this.cachedHeatmap = hm.grid;
-                this.cachedHeatmapBounds = hm.bounds;
 
                 State.set(this._tabPath('pointsRemaining'), score);
-                State.set(this._tabPath('optimalAim'), result.optimalAim);
-                State.set(this._tabPath('expectedValue'), result.expectedValue);
+                if (selectedResult) {
+                    State.set(this._tabPath('optimalAim'), selectedResult.optimalAim);
+                    State.set(this._tabPath('expectedValue'), selectedResult.expectedValue);
+                }
                 State.saveToStorage();
 
                 this._renderBoard();
-                this._showResults(result);
+                this._showResults(this.lastResult);
                 await yieldToUi();
             }
 
@@ -621,6 +855,7 @@ class SolverTabController {
             this.isSolving = false;
             this.cancelRequested = false;
             this._setControlsDisabled(false);
+            this._syncMinRoundsRoundStateControls();
             this._setCancelButtonVisible(false);
             this._setNavigationDisabled(false);
             if (progressWrap) progressWrap.hidden = true;
@@ -683,9 +918,16 @@ class SolverTabController {
                 ? 'Expected rounds'
                 : 'Expected throws';
 
+        const currentParams = this._readParams();
+
+        const minRoundsContext = this.solverType === 'minRounds'
+            ? `<p class="result-line">State: <span class="value">round start ${currentParams.minRoundsState.roundStartScore}, throw ${currentParams.minRoundsState.throwNumber}/3</span></p>`
+            : '';
+
         panel.innerHTML = `
             <p class="result-line">${valueLabel}: <span class="value">${result.expectedValue.toFixed(3)}</span></p>
             <p class="result-line">Optimal aim: <span class="value">(${result.optimalAim.x.toFixed(1)}, ${result.optimalAim.y.toFixed(1)})</span></p>
+            ${minRoundsContext}
         `;
     }
 

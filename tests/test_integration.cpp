@@ -795,3 +795,35 @@ TEST(SolverMinRounds, OriginalTarget) {
     auto res_full = solver.solve(501);
     EXPECT_LT(res_full.first, 1e4);
 }
+
+TEST(SolverMinRounds, RoundStateThrowOneMatchesLegacySolve) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 225);
+
+    auto legacy = solver.solve(40);
+    auto round_state = solver.solve_round_state(40, 40, 1);
+
+    EXPECT_NEAR(legacy.first, round_state.first, 1e-6);
+    EXPECT_NEAR(legacy.second.x, round_state.second.x, 1e-9);
+    EXPECT_NEAR(legacy.second.y, round_state.second.y, 1e-9);
+}
+
+TEST(SolverMinRounds, MidRoundDependsOnRoundStartScore) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 225);
+
+    auto state_from_40 = solver.solve_round_state(40, 32, 2);
+    auto state_from_80 = solver.solve_round_state(80, 32, 2);
+
+    // Busts reset to round_start_score, so identical current score on the same throw
+    // can have a different expected value.
+    EXPECT_NE(state_from_40.first, state_from_80.first);
+}

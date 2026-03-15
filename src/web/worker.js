@@ -100,10 +100,18 @@ function handleSolve(payload) {
         gameMode,
         solverType,
         samples,
+        minRoundsState,
     } = payload;
 
     ensureObjects(covFlat, gameMode, solverType, samples);
-    const res = module.solverSolve(solver, pointsRemaining);
+    const res = solverType === 'minRounds' && minRoundsState
+        ? module.solverSolveMinRoundsRoundState(
+            solver,
+            minRoundsState.roundStartScore,
+            minRoundsState.currentScore,
+            minRoundsState.throwNumber,
+        )
+        : module.solverSolve(solver, pointsRemaining);
 
     return {
         expectedValue: res.expected_throws,
@@ -122,16 +130,27 @@ function handleHeatmap(payload) {
         solverType,
         samples,
         resolution,
+        minRoundsState,
     } = payload;
 
     ensureObjects(covFlat, gameMode, solverType, samples);
-    if (!heatVis || heatVis._res !== resolution) {
-        heatVis?.delete();
-        heatVis = new module.HeatMapVisualizer(solver, resolution, resolution);
-        heatVis._res = resolution;
-    }
-
-    const hm = heatVis.heat_map(pointsRemaining);
+    const hm = solverType === 'minRounds' && minRoundsState
+        ? module.solverHeatMapMinRoundsRoundState(
+            solver,
+            minRoundsState.roundStartScore,
+            minRoundsState.currentScore,
+            minRoundsState.throwNumber,
+            resolution,
+            resolution,
+        )
+        : (() => {
+            if (!heatVis || heatVis._res !== resolution) {
+                heatVis?.delete();
+                heatVis = new module.HeatMapVisualizer(solver, resolution, resolution);
+                heatVis._res = resolution;
+            }
+            return heatVis.heat_map(pointsRemaining);
+        })();
     const rows = hm.size();
     const cols = rows > 0 ? hm.get(0).size() : 0;
 

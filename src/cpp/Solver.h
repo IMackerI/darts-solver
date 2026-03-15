@@ -120,8 +120,29 @@ private:
     static constexpr double EPSILON = 1e-5;
     static constexpr double INFINITE_SCORE = 1e9;
 
+    struct RoundStateKey {
+        Game::State round_start_score;
+        Game::State current_score;
+        unsigned int throw_number;
+
+        bool operator==(const RoundStateKey& other) const {
+            return round_start_score == other.round_start_score
+                && current_score == other.current_score
+                && throw_number == other.throw_number;
+        }
+    };
+
+    struct RoundStateKeyHash {
+        size_t operator()(const RoundStateKey& key) const {
+            size_t h1 = std::hash<Game::State>{}(key.round_start_score);
+            size_t h2 = std::hash<Game::State>{}(key.current_score);
+            size_t h3 = std::hash<unsigned int>{}(key.throw_number);
+            return h1 ^ (h2 << 1) ^ (h3 << 2);
+        }
+    };
+
     unsigned int throws_per_round_;
-    std::unordered_map<Game::State, std::pair<Score, Vec2>> memoization_;
+    std::unordered_map<RoundStateKey, std::pair<Score, Vec2>, RoundStateKeyHash> memoization_;
     std::unordered_set<Game::State> winable_;
 
     // Evaluates the expected rounds from state `current_score` with `throws_left` darts remaining.
@@ -129,6 +150,11 @@ private:
     // Uses its own internal memoization cache for the current mini-DP step.
     double evaluate_dp(Game::State start_score, Game::State current_score, unsigned int throws_left, double X_start_guess,
                        std::unordered_map<unsigned int, double>& inner_memo);
+
+    std::pair<Score, Vec2> solve_round_start_state(Game::State s);
+    std::pair<Score, Vec2> solve_nonstart_round_state(Game::State round_start_score, Game::State current_score, unsigned int throw_number);
+    [[nodiscard]] bool is_valid_throw_number(unsigned int throw_number) const;
+    [[nodiscard]] RoundStateKey make_state_key(Game::State round_start_score, Game::State current_score, unsigned int throw_number) const;
 
 public:
     /**
@@ -148,6 +174,21 @@ public:
      * @return Expected number of rounds to finish
      */
     [[nodiscard]] Score solve_aim(Game::State s, Vec2 aim) override;
+
+    /**
+     * @brief Compute expected rounds for a given in-round state and aim.
+     *
+     * This supports solving from the middle of a round. The current round is always
+     * counted as one round in the returned expectation, matching the start-of-round API.
+     *
+     * @param round_start_score Score at the start of the current round
+     * @param current_score Current remaining score before this throw
+     * @param throw_number Current throw number in the round (1..throws_per_round)
+     * @param aim Target point
+     * @return Expected number of rounds to finish
+     */
+    [[nodiscard]] Score solve_aim_round_state(Game::State round_start_score, Game::State current_score,
+                                              unsigned int throw_number, Vec2 aim);
     
     /**
      * @brief Find optimal strategy for a state.
@@ -156,6 +197,17 @@ public:
      * @return (expected_rounds, optimal_aim_for_first_dart) pair
      */
     std::pair<Score, Vec2> solve(Game::State s) override;
+
+    /**
+     * @brief Find optimal strategy for an arbitrary in-round state.
+     *
+     * @param round_start_score Score at the start of the current round
+     * @param current_score Current remaining score before this throw
+     * @param throw_number Current throw number in the round (1..throws_per_round)
+     * @return (expected_rounds, optimal_aim_for_selected_throw)
+     */
+    [[nodiscard]] std::pair<Score, Vec2> solve_round_state(Game::State round_start_score, Game::State current_score,
+                                                           unsigned int throw_number);
 };
 /**
  * @brief Greedy solver that maximizes expected points per throw.
