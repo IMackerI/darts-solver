@@ -103,9 +103,10 @@ double SolverMinRounds::evaluate_dp(Game::State start_score, Game::State current
         auto hits = game_.throw_at_distribution(aim);
 
         double expected = 0.0;
+        double prob_sum = 0.0;
         for (size_t i = 0; i < states.size(); ++i) {
             Game::State next_state = states[i].first;
-            double prob = states[i].second;
+            double prob = std::max(0.0, states[i].second); prob_sum += prob;
             HitData hit = hits[i].first;
 
             if (next_state == 0) {
@@ -124,7 +125,8 @@ double SolverMinRounds::evaluate_dp(Game::State start_score, Game::State current
                 }
             }
         }
-        if (expected < best_expected) {
+        if (prob_sum > 0) expected /= prob_sum; else expected = INFINITE_SCORE;
+            if (expected < best_expected) {
             best_expected = expected;
         }
     }
@@ -146,9 +148,10 @@ SolverMinRounds::Score SolverMinRounds::solve_aim(Game::State s, Vec2 aim) {
     auto hits = game_.throw_at_distribution(aim);
 
     double expected = 0.0;
+        double prob_sum = 0.0;
     for (size_t i = 0; i < states.size(); ++i) {
         Game::State next_state = states[i].first;
-        double prob = states[i].second;
+        double prob = std::max(0.0, states[i].second); prob_sum += prob;
         HitData hit = hits[i].first;
 
         if (next_state == 0) {
@@ -195,7 +198,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
     std::pair<SolverMinRounds::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
     int iterations = 0;
 
-    while (std::abs(current_guess - last_guess) > EPSILON && iterations < 50) {
+    while (std::abs(current_guess - last_guess) > EPSILON && iterations < 1000) {
         last_guess = current_guess;
         double best_expected = INFINITE_SCORE;
         Vec2 best_aim{0.0, 0.0};
@@ -207,9 +210,10 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
             auto hits = game_.throw_at_distribution(aim);
 
             double expected = 0.0;
+        double prob_sum = 0.0;
             for (size_t i = 0; i < states.size(); ++i) {
                 Game::State next_state = states[i].first;
-                double prob = states[i].second;
+                double prob = std::max(0.0, states[i].second); prob_sum += prob;
                 HitData hit = hits[i].first;
 
                 if (next_state == 0) {
@@ -226,6 +230,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
                 }
             }
             
+            if (prob_sum > 0) expected /= prob_sum; else expected = INFINITE_SCORE;
             if (expected < best_expected) {
                 best_expected = expected;
                 best_aim = aim;
@@ -237,6 +242,7 @@ std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
         iterations++;
     }
 
+    if (std::abs(current_guess - last_guess) > EPSILON || best_score.first > 1e4) { best_score.first = INFINITE_SCORE; }
     if (best_score.first < INFINITE_SCORE - 1000.0) {
         winable_.insert(s);
     }
