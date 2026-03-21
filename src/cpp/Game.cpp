@@ -12,7 +12,7 @@
 // TODO remove dedup
 Game::HitDistribution Game::throw_at_distribution_(Vec2 p) const {
     if (throw_at_cache_.contains(p)) {
-        return throw_at_cache_.at(p);
+        return throw_at_cache_[p];
     }
 
     std::map<HitData, double> result;
@@ -31,7 +31,11 @@ Game::HitDistribution Game::throw_at_distribution_(Vec2 p) const {
     result[HitData(HitData::Type::NORMAL, 0)] += 1.0 - total_probability;
 
     throw_at_cache_[p] = std::vector<std::pair<HitData, double>>(result.begin(), result.end());
-    return throw_at_cache_.at(p);
+    return throw_at_cache_[p];
+}
+
+Game::HitDistribution Game::throw_at_distribution(Vec2 p) const {
+    return throw_at_distribution_(p);
 }
 
 Game::Game(const Target& target, const Distribution& distribution) 

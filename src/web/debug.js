@@ -254,6 +254,18 @@ async function testSolver() {
         }
         testPassed('Multiple solve() calls');
         
+        // --- Add test for SolverMinRounds ---
+        log('Testing SolverMinRounds...');
+        let solverRounds = new dartsModule.SolverMinRounds(game, 3, 100);
+        testPassed('SolverMinRounds constructor');
+        
+        const resultRounds = dartsModule.solverSolve(solverRounds, 50);
+        if (resultRounds.expected_throws <= 0) throw new Error('Invalid expected rounds');
+        testPassed('SolverMinRounds.solve() via wrapper');
+        
+        if (solverRounds) solverRounds.delete();
+        // ------------------------------------
+
     } catch (error) {
         testFailed('Solver test', error.message);
         return false;

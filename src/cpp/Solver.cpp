@@ -81,6 +81,396 @@ std::pair<SolverMinThrows::Score, Vec2> SolverMinThrows::solve(Game::State s) {
     return best_score;
 }
 
+double SolverMinRounds::evaluate_dp(Game::State start_score, Game::State current_score, unsigned int throws_left, double X_start_guess, std::unordered_map<unsigned int, double>& inner_memo) {
+    if (current_score == 0) return 0.0;
+    if (throws_left == 0) {
+        if (current_score == start_score) return X_start_guess;
+        double cost = solve(current_score).first;
+        if (!winable_.contains(current_score)) return X_start_guess; // Treat unwinnable as bust
+        return cost;
+    }
+
+    // State packing just for internal memoization inside this single round
+    unsigned int state_key = (current_score << 8) | throws_left;
+    if (inner_memo.contains(state_key)) {
+        return inner_memo[state_key];
+    }
+
+    double best_expected = INFINITE_SCORE;
+
+    for (const auto& aim : sample_aims_()) {
+        auto states = game_.throw_at(aim, current_score);
+        auto hits = game_.throw_at_distribution(aim);
+
+        double expected = 0.0;
+        double prob_sum = 0.0;
+        for (size_t i = 0; i < states.size(); ++i) {
+            Game::State next_state = states[i].first;
+            double prob = std::max(0.0, states[i].second); prob_sum += prob;
+            HitData hit = hits[i].first;
+
+            if (next_state == 0) {
+                expected += prob * 0.0;
+            } else if (hit.diff == 0) { // Miss, not a bust
+                expected += prob * evaluate_dp(start_score, current_score, throws_left - 1, X_start_guess, inner_memo);
+            } else {
+                // Not a miss, check if bust
+                bool is_bust = (next_state == current_score) || (next_state != 0 && !winable_.contains(next_state));
+                // Add case: if current_score is NOT start_score, and we hit something that leaves score unchanged but diff != 0?
+                // Actually `next_state == current_score` for hit.diff != 0 is ALWAYS an overshoot (bust).
+                if (is_bust) {
+                    expected += prob * X_start_guess;
+                } else {
+                    expected += prob * evaluate_dp(start_score, next_state, throws_left - 1, X_start_guess, inner_memo);
+                }
+            }
+        }
+        if (prob_sum > 0) expected /= prob_sum; else expected = INFINITE_SCORE;
+            if (expected < best_expected) {
+            best_expected = expected;
+        }
+    }
+
+    inner_memo[state_key] = best_expected;
+    return best_expected;
+}
+
+bool SolverMinRounds::is_valid_throw_number(unsigned int throw_number) const {
+    return throw_number >= 1 && throw_number <= throws_per_round_;
+}
+
+SolverMinRounds::RoundStateKey SolverMinRounds::make_state_key(Game::State round_start_score, Game::State current_score,
+                                                                unsigned int throw_number) const {
+    return RoundStateKey{round_start_score, current_score, throw_number};
+}
+
+uint64_t SolverMinRounds::make_round_dp_cache_key(Game::State round_start_score, Game::State current_score,
+                                                   unsigned int throws_left) const {
+    return (static_cast<uint64_t>(round_start_score) << 32)
+        | (static_cast<uint64_t>(current_score) << 8)
+        | static_cast<uint64_t>(throws_left & 0xFFu);
+}
+
+double SolverMinRounds::evaluate_dp_cached(Game::State start_score, Game::State current_score,
+                                           unsigned int throws_left, double round_start_value) {
+    if (current_score == 0) {
+        return 0.0;
+    }
+
+    if (throws_left == 0) {
+        if (current_score == start_score) {
+            return round_start_value;
+        }
+        double cost = solve(current_score).first;
+        if (!winable_.contains(current_score)) {
+            return round_start_value;
+        }
+        return cost;
+    }
+
+    uint64_t key = make_round_dp_cache_key(start_score, current_score, throws_left);
+    if (round_dp_cache_.contains(key)) {
+        return round_dp_cache_[key];
+    }
+
+    double best_expected = INFINITE_SCORE;
+
+    for (const auto& aim : sample_aims_()) {
+        auto states = game_.throw_at(aim, current_score);
+        auto hits = game_.throw_at_distribution(aim);
+
+        double expected = 0.0;
+        double prob_sum = 0.0;
+        for (size_t i = 0; i < states.size(); ++i) {
+            Game::State next_state = states[i].first;
+            double prob = std::max(0.0, states[i].second); prob_sum += prob;
+            HitData hit = hits[i].first;
+
+            if (next_state == 0) {
+                expected += prob * 0.0;
+            } else if (hit.diff == 0) {
+                expected += prob * evaluate_dp_cached(start_score, current_score, throws_left - 1, round_start_value);
+            } else {
+                bool is_bust = (next_state == current_score) || (next_state != 0 && !winable_.contains(next_state));
+                if (is_bust) {
+                    expected += prob * round_start_value;
+                } else {
+                    expected += prob * evaluate_dp_cached(start_score, next_state, throws_left - 1, round_start_value);
+                }
+            }
+        }
+
+        if (prob_sum > 0) {
+            expected /= prob_sum;
+        } else {
+            expected = INFINITE_SCORE;
+        }
+
+        if (expected < best_expected) {
+            best_expected = expected;
+        }
+    }
+
+    round_dp_cache_[key] = best_expected;
+    return best_expected;
+}
+
+std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve_nonstart_round_state(
+    Game::State round_start_score,
+    Game::State current_score,
+    unsigned int throw_number
+) {
+    if (!is_valid_throw_number(throw_number)) {
+        return {INFINITE_SCORE, Vec2{0.0, 0.0}};
+    }
+
+    if (current_score == 0) {
+        return {0.0, Vec2{0.0, 0.0}};
+    }
+
+    const RoundStateKey key = make_state_key(round_start_score, current_score, throw_number);
+    if (memoization_.contains(key)) {
+        return memoization_[key];
+    }
+
+    // Expected rounds from the start of this round, used when busting to reset.
+    double round_start_value = solve(round_start_score).first;
+    if (round_start_value >= INFINITE_SCORE - 1000.0) {
+        memoization_[key] = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+        return memoization_[key];
+    }
+
+    unsigned int throws_left_after = throws_per_round_ - throw_number;
+
+    std::pair<SolverMinRounds::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+
+    for (const auto& aim : sample_aims_()) {
+        auto states = game_.throw_at(aim, current_score);
+        auto hits = game_.throw_at_distribution(aim);
+
+        double expected = 0.0;
+        double prob_sum = 0.0;
+        for (size_t i = 0; i < states.size(); ++i) {
+            Game::State next_state = states[i].first;
+            double prob = std::max(0.0, states[i].second); prob_sum += prob;
+            HitData hit = hits[i].first;
+
+            if (next_state == 0) {
+                expected += prob * 0.0;
+            } else if (hit.diff == 0) {
+                expected += prob * evaluate_dp_cached(round_start_score, current_score, throws_left_after, round_start_value);
+            } else {
+                bool is_bust = (next_state == current_score) || (next_state != 0 && !winable_.contains(next_state));
+                if (is_bust) {
+                    expected += prob * round_start_value;
+                } else {
+                    expected += prob * evaluate_dp_cached(round_start_score, next_state, throws_left_after, round_start_value);
+                }
+            }
+        }
+
+        if (prob_sum > 0) {
+            expected /= prob_sum;
+        } else {
+            expected = INFINITE_SCORE;
+        }
+
+        // Include the current round in the return value, matching solve(start_score).
+        expected += 1.0;
+        if (expected < best_score.first) {
+            best_score = {expected, aim};
+        }
+    }
+
+    memoization_[key] = best_score;
+    return best_score;
+}
+
+std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve_round_start_state(Game::State s) {
+    const RoundStateKey key = make_state_key(s, s, 1);
+    if (memoization_.contains(key)) {
+        return memoization_[key];
+    }
+
+    if (s == 0) {
+        winable_.insert(0);
+        memoization_[key] = {0.0, Vec2{0.0, 0.0}};
+        return memoization_[key];
+    }
+
+    // Pre-evaluate all strictly smaller states to populate winable_ and start-state memoization.
+    for (const auto& aim : sample_aims_()) {
+        auto states = game_.throw_at(aim, s);
+        for (const auto& state_prob : states) {
+            Game::State next_state = state_prob.first;
+            if (next_state < s && next_state != 0) {
+                solve(next_state);
+            }
+        }
+    }
+
+    bool has_progress_path = false;
+    for (const auto& aim : sample_aims_()) {
+        auto states = game_.throw_at(aim, s);
+        auto hits = game_.throw_at_distribution(aim);
+        for (size_t i = 0; i < states.size(); ++i) {
+            Game::State next_state = states[i].first;
+            HitData hit = hits[i].first;
+            if (next_state == 0) {
+                has_progress_path = true;
+                break;
+            }
+            if (hit.diff == 0) continue;
+            bool is_bust = (next_state == s) || (next_state != 0 && !winable_.contains(next_state));
+            if (!is_bust) {
+                has_progress_path = true;
+                break;
+            }
+        }
+        if (has_progress_path) break;
+    }
+
+    if (!has_progress_path) {
+        memoization_[key] = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+        return memoization_[key];
+    }
+
+    // Fixed-point iteration to resolve the start-of-round self-loop.
+    double current_guess = s / 20.0 + 1.0;
+    double last_guess = 0;
+    std::pair<SolverMinRounds::Score, Vec2> best_score = {INFINITE_SCORE, Vec2{0.0, 0.0}};
+    int iterations = 0;
+
+    while (std::abs(current_guess - last_guess) > EPSILON && iterations < 50) {
+        last_guess = current_guess;
+        double best_expected = INFINITE_SCORE;
+        Vec2 best_aim{0.0, 0.0};
+
+        std::unordered_map<unsigned int, double> inner_memo;
+
+        for (const auto& aim : sample_aims_()) {
+            auto states = game_.throw_at(aim, s);
+            auto hits = game_.throw_at_distribution(aim);
+
+            double expected = 0.0;
+            double prob_sum = 0.0;
+            for (size_t i = 0; i < states.size(); ++i) {
+                Game::State next_state = states[i].first;
+                double prob = std::max(0.0, states[i].second); prob_sum += prob;
+                HitData hit = hits[i].first;
+
+                if (next_state == 0) {
+                    expected += prob * 0.0;
+                } else if (hit.diff == 0) {
+                    expected += prob * evaluate_dp(s, s, throws_per_round_ - 1, current_guess, inner_memo);
+                } else {
+                    bool is_bust = (next_state == s) || (next_state != 0 && !winable_.contains(next_state));
+                    if (is_bust) {
+                        expected += prob * current_guess;
+                    } else {
+                        expected += prob * evaluate_dp(s, next_state, throws_per_round_ - 1, current_guess, inner_memo);
+                    }
+                }
+            }
+
+            if (prob_sum > 0) expected /= prob_sum; else expected = INFINITE_SCORE;
+            if (expected < best_expected) {
+                best_expected = expected;
+                best_aim = aim;
+            }
+        }
+
+        current_guess = best_expected + 1.0;
+        best_score = {current_guess, best_aim};
+        iterations++;
+    }
+
+    if (best_score.first > 1e4) { best_score.first = INFINITE_SCORE; }
+    if (best_score.first < INFINITE_SCORE - 1000.0) {
+        winable_.insert(s);
+    }
+    memoization_[key] = best_score;
+    return best_score;
+}
+
+SolverMinRounds::Score SolverMinRounds::solve_aim(Game::State s, Vec2 aim) {
+    return solve_aim_round_state(s, s, 1, aim);
+}
+
+std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve(Game::State s) {
+    return solve_round_start_state(s);
+}
+
+SolverMinRounds::Score SolverMinRounds::solve_aim_round_state(Game::State round_start_score, Game::State current_score,
+                                                               unsigned int throw_number, Vec2 aim) {
+    if (!is_valid_throw_number(throw_number)) {
+        return INFINITE_SCORE;
+    }
+    if (current_score == 0) {
+        return 0.0;
+    }
+
+    // Ensure both the round start score and current score are solved from round start
+    // before evaluating bust/winnable transitions.
+    double round_start_value = solve(round_start_score).first;
+    solve(current_score);
+    if (round_start_value >= INFINITE_SCORE - 1000.0) {
+        return INFINITE_SCORE;
+    }
+
+    unsigned int throws_left_after = throws_per_round_ - throw_number;
+
+    auto states = game_.throw_at(aim, current_score);
+    auto hits = game_.throw_at_distribution(aim);
+
+    double expected = 0.0;
+    double prob_sum = 0.0;
+    for (size_t i = 0; i < states.size(); ++i) {
+        Game::State next_state = states[i].first;
+        double prob = std::max(0.0, states[i].second); prob_sum += prob;
+        HitData hit = hits[i].first;
+
+        if (next_state == 0) {
+            expected += prob * 0.0;
+        } else if (hit.diff == 0) {
+            expected += prob * evaluate_dp_cached(round_start_score, current_score, throws_left_after, round_start_value);
+        } else {
+            bool is_bust = (next_state == current_score) || (next_state != 0 && !winable_.contains(next_state));
+            if (is_bust) {
+                expected += prob * round_start_value;
+            } else {
+                expected += prob * evaluate_dp_cached(round_start_score, next_state, throws_left_after, round_start_value);
+            }
+        }
+    }
+
+    if (prob_sum > 0) {
+        expected /= prob_sum;
+    } else {
+        expected = INFINITE_SCORE;
+    }
+
+    return expected + 1.0;
+}
+
+std::pair<SolverMinRounds::Score, Vec2> SolverMinRounds::solve_round_state(Game::State round_start_score,
+                                                                             Game::State current_score,
+                                                                             unsigned int throw_number) {
+    if (current_score == 0) {
+        return {0.0, Vec2{0.0, 0.0}};
+    }
+
+    if (!is_valid_throw_number(throw_number)) {
+        return {INFINITE_SCORE, Vec2{0.0, 0.0}};
+    }
+
+    if (throw_number == 1 && round_start_score == current_score) {
+        return solve_round_start_state(current_score);
+    }
+
+    return solve_nonstart_round_state(round_start_score, current_score, throw_number);
+}
+
 MaxPointsSolver::Score MaxPointsSolver::solve_aim(Game::State s, Vec2 aim) {
     auto states = game_.throw_at(aim, s);
     MaxPointsSolver::Score expected = 0;

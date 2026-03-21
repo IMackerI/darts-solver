@@ -23,8 +23,10 @@
             <li><a href="#/" class="nav-link active" data-page="landing"><span class="nav-icon">⌂</span>Home</a></li>
             <li><a href="#/calibrate" class="nav-link" data-page="calibration"><span
                         class="nav-icon">⊕</span>Calibration</a></li>
-            <li><a href="#/solve" class="nav-link" data-page="solver"><span class="nav-icon">◉</span>Solver</a></li>
-            <li><a href="docs/html/index.html" class="nav-link" target="_blank" rel="noopener"><span class="nav-icon">📖</span>Docs</a></li>
+            <li><a href="#/solve/max-points" class="nav-link" data-page="solver-max-points"><span class="nav-icon">◉</span>Maximize Points</a></li>
+            <li><a href="#/solve/min-throws" class="nav-link" data-page="solver-min-throws"><span class="nav-icon">◎</span>Minimize Throws</a></li>
+            <li><a href="#/solve/min-rounds" class="nav-link" data-page="solver-min-rounds"><span class="nav-icon">◌</span>Minimize Rounds</a></li>
+            <li><a href="docs/index.html" class="nav-link" target="_blank" rel="noopener"><span class="nav-icon">📖</span>Docs</a></li>
         </ul>
         <div class="sidebar-footer">
             <div id="wasm-status" class="status loading">Loading WASM…</div>
@@ -60,10 +62,10 @@
                         <div class="card-step-num">02</div>
                         <h3>Solve</h3>
                         <p>
-                            Pick a game state and see the optimal aim point, expected throws
+                            Pick points remaining and see the optimal aim point, expected throws
                             to finish, and a heatmap of scores across the board.
                         </p>
-                        <a href="#/solve" class="btn btn-card">Open Solver →</a>
+                        <a href="#/solve/min-throws" class="btn btn-card">Open Solver →</a>
                     </div>
                 </div>
 
@@ -72,8 +74,8 @@
                     <ul>
                         <li><strong>Your accuracy</strong> is modelled as a 2D Gaussian distribution estimated from your
                             calibration shots.</li>
-                        <li><strong>Dynamic programming</strong> finds the aim point that minimises expected throws for
-                            any state.</li>
+                        <li><strong>Solver search</strong> finds the aim point that minimises expected throws for
+                            any points remaining value.</li>
                         <li><strong>Heatmaps</strong> visualise expected throws or expected points across every possible
                             aim point.</li>
                     </ul>
@@ -168,77 +170,48 @@
                 </div>
             </div>
         </section>
-        <section id="page-solver" class="page">
+        <section id="page-solver-max-points" class="page solver-page" data-solver-type="maxPoints" data-auto-solve="true" data-default-game-mode="finishOnAny" data-default-show-heatmap="true" data-default-heatmap-resolution="100" data-max-points-mode="true">
             <div class="page-inner page-inner--wide">
-                <h2>Solver</h2>
-                <p class="subtitle" id="solver-subtitle">Configure and solve for optimal dart strategy.</p>
+                <h2>Maximize Points</h2>
+                <p class="subtitle" data-role="solver-subtitle">Find the best place to aim for the highest expected points on your next throw.</p>
 
                 <div class="two-col">
-                    <!-- Canvas column -->
                     <div class="canvas-wrap">
                         <div class="canvas-toolbar">
                             <label class="toggle-label toggle-label--inline">
-                                <input type="checkbox" id="show-heatmap">
+                                <input type="checkbox" data-role="show-heatmap" checked>
                                 <span>Heatmap</span>
                             </label>
                         </div>
-                        <canvas id="solver-canvas" width="700" height="700"></canvas>
+                        <canvas data-role="solver-canvas" width="700" height="700"></canvas>
                     </div>
 
-                    <!-- Controls column -->
                     <div class="controls-panel">
                         <div class="control-group">
-                            <h3><span class="cg-icon">⚙</span>Game Settings</h3>
-                            <label class="field">
-                                <span>Game Mode</span>
-                                <select id="game-mode">
-                                    <option value="finishOnDouble">Finish on Double</option>
-                                    <option value="finishOnAny">Finish on Any</option>
-                                </select>
-                            </label>
-                            <label class="field">
-                                <span>State (points remaining)</span>
-                                <div class="state-nav">
-                                    <button id="btn-state-prev" class="btn btn-secondary btn-arrow"
-                                        title="Previous state (←)">◀</button>
-                                    <input type="number" id="game-state" min="1" max="501" value="501">
-                                    <button id="btn-state-next" class="btn btn-secondary btn-arrow"
-                                        title="Next state (→)">▶</button>
-                                </div>
-                            </label>
-                        </div>
-
-                        <div class="control-group">
-                            <h3><span class="cg-icon">◈</span>Solver</h3>
-                            <label class="field">
-                                <span>Solver Type</span>
-                                <select id="solver-type">
-                                    <option value="minThrows">Minimize Throws (DP)</option>
-                                    <option value="maxPoints">Maximize Points (Greedy)</option>
-                                </select>
-                            </label>
                             <label class="field">
                                 <span>Aim Samples</span>
-                                <input type="number" id="aim-samples" min="100" max="50000" value="5000">
+                                <input type="number" data-role="aim-samples" min="100" max="50000" value="5000">
                             </label>
-                            <button id="btn-solve" class="btn">Solve</button>
                         </div>
 
                         <div class="control-group">
                             <h3><span class="cg-icon">★</span>Results</h3>
-                            <div id="solve-results" class="info-box">
-                                <p class="muted">Press Solve to compute the optimal strategy.</p>
+                            <div data-role="solve-results" class="info-box">
+                                <p class="muted">Computing optimal scoring aim…</p>
                             </div>
                         </div>
 
                         <div class="control-group">
                             <h3><span class="cg-icon">⊞</span>Visualization</h3>
-                            <label class="field" id="heatmap-res-field" style="display:none">
+                            <label class="field" data-role="heatmap-res-field">
                                 <span>Heatmap Resolution</span>
-                                <select id="heatmap-resolution">
-                                    <option value="30">30 × 30 (fast)</option>
-                                    <option value="50" selected>50 × 50</option>
-                                    <option value="100">100 × 100 (slow)</option>
+                                <select data-role="heatmap-resolution">
+                                    <option value="50">50 × 50 (fast)</option>
+                                    <option value="100" selected>100 × 100</option>
+                                    <option value="200">200 × 200</option>
+                                    <option value="300">300 × 300</option>
+                                    <option value="400">400 × 400</option>
+                                    <option value="500">500 × 500 (very slow)</option>
                                 </select>
                             </label>
                         </div>
@@ -246,66 +219,248 @@
                 </div>
 
                 <div class="instructions-box">
-                    <h3>How to Use the Solver</h3>
+                    <h3>How to Use This Tab</h3>
                     <div class="instructions-content">
-                        <h4>Game Settings</h4>
+                        <h4>What this solves</h4>
                         <ul>
-                            <li><strong>Game Mode:</strong> "Finish on Double" is standard darts (x01) — you must hit a
-                                double to check out. "Finish on Any" allows finishing on any scoring segment.</li>
-                            <li><strong>State:</strong> The number of points remaining. For example, in a 501 game you
-                                start at state 501. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> arrow keys to step
-                                through states.</li>
+                            <li>This tab focuses on pure scoring: it finds where your expected points per throw are highest.</li>
+                            <li>Change <strong>Aim Samples</strong> for a faster or more accurate search. The board updates automatically.</li>
                         </ul>
 
-                        <h4>Solver Types</h4>
+                        <h4>Heatmap</h4>
                         <ul>
-                            <li>
-                                <strong>Minimize Throws (DP):</strong> Uses dynamic programming to find the aim point
-                                that minimizes the <em>expected number of throws</em> to reach 0. Best for states ≤ 1000
-                                (higher values are too slow). This is the strategic solver for real games.
-                                <ul><li>Use this setting to find out the best aiming spots for a precise game scenario.</li></ul>
-                            </li>
-                            <li>
-                                <strong>Maximize Points (Greedy):</strong> A simpler greedy solver that maximizes the
-                                expected points per throw, ignoring future states. Works for any state value. Useful for
-                                understanding raw scoring potential.
-                                <ul><li>You can use this with high points remaining to see what is the best scoring spot for you in general.</li></ul>
-                            </li>
+                            <li>Heatmap is enabled by default and shows expected points over the whole board.</li>
+                            <li>Higher resolution gives smoother detail at the cost of computation time.</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-solver-min-throws" class="page solver-page" data-solver-type="minThrows" data-auto-solve="true" data-default-game-mode="finishOnDouble" data-default-show-heatmap="true" data-default-heatmap-resolution="50">
+            <div class="page-inner page-inner--wide">
+                <h2>Minimize Throws</h2>
+                <p class="subtitle" data-role="solver-subtitle">Configure points remaining and instantly compute the best aiming strategy.</p>
+
+                <div class="two-col">
+                    <div class="canvas-wrap">
+                        <div class="canvas-toolbar">
+                            <label class="toggle-label toggle-label--inline">
+                                <input type="checkbox" data-role="show-heatmap" checked>
+                                <span>Heatmap</span>
+                            </label>
+                        </div>
+                        <canvas data-role="solver-canvas" width="700" height="700"></canvas>
+                    </div>
+
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <h3><span class="cg-icon">⚙</span>Game Settings</h3>
+                            <label class="field">
+                                <span>Game Mode</span>
+                                <select data-role="game-mode">
+                                    <option value="finishOnDouble">Finish on Double</option>
+                                    <option value="finishOnAny">Finish on Any</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Points Remaining</span>
+                                <div class="state-nav">
+                                    <button data-role="btn-points-prev" class="btn btn-secondary btn-arrow"
+                                        title="Previous points remaining (←)">◀</button>
+                                    <input type="number" data-role="points-remaining" min="1" max="1000" value="501">
+                                    <button data-role="btn-points-next" class="btn btn-secondary btn-arrow"
+                                        title="Next points remaining (→)">▶</button>
+                                </div>
+                            </label>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">◈</span>Solver</h3>
+                            <label class="field">
+                                <span>Aim Samples</span>
+                                <input type="number" data-role="aim-samples" min="100" max="50000" value="5000">
+                            </label>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">★</span>Results</h3>
+                            <div data-role="solve-results" class="info-box">
+                                <p class="muted">Adjust settings to compute the optimal strategy.</p>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">⊞</span>Visualization</h3>
+                            <label class="field" data-role="heatmap-res-field">
+                                <span>Heatmap Resolution</span>
+                                <select data-role="heatmap-resolution">
+                                    <option value="30">30 × 30 (fast)</option>
+                                    <option value="50" selected>50 × 50</option>
+                                    <option value="100">100 × 100</option>
+                                    <option value="200">200 × 200</option>
+                                    <option value="300">300 × 300</option>
+                                    <option value="400">400 × 400</option>
+                                    <option value="500">500 × 500 (very slow)</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="instructions-box">
+                    <h3>How to Use This Tab</h3>
+                    <div class="instructions-content">
+                        <h4>Game settings</h4>
+                        <ul>
+                            <li><strong>Game Mode:</strong> Choose checkout rules for your game.</li>
+                            <li><strong>Points Remaining:</strong> Set your current score to finish. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> to step values.</li>
                         </ul>
 
                         <h4>Reading the Results</h4>
                         <ul>
                             <li>The <strong>red crosshair</strong> on the board shows the computed optimal aim point.
                             </li>
-                            <li><strong>Expected throws/points</strong> tells you the average outcome given your
-                                accuracy distribution.</li>
+                            <li><strong>Expected throws</strong> tells you the average number of darts needed from the selected points remaining.</li>
                             <li><strong>Aim Samples</strong> controls how many candidate aim points are tested. Higher =
                                 more accurate but slower. 5000 is a good default.</li>
                         </ul>
 
                         <h4>Heatmap</h4>
-                        <p>Toggle the heatmap to see how the expected outcome varies across <em>every</em> possible aim
-                            point:</p>
+                        <p>Toggle the heatmap to see how the expected outcome varies across <em>every</em> possible aim point:</p>
                         <ul>
-                            <li><strong>Minimize Throws:</strong> Uses a turbo colour scale (blue = best, red = worst).
-                                Values are shown as "throws above the optimum" on a logarithmic scale, capped at +50.
-                            </li>
-                            <li><strong>Maximize Points:</strong> Uses a linear red-to-green scale (green = highest
-                                expected points).</li>
+                            <li>Uses a turbo colour scale (blue = best, red = worst).</li>
                             <li>Increase the <strong>resolution</strong> (50×50 → 100×100) for a smoother picture, at
                                 the cost of computation time.</li>
                         </ul>
-                        <p>This way you can find out if your previous aim point was close to optimal or not really :)</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="page-solver-min-rounds" class="page solver-page" data-solver-type="minRounds" data-auto-solve="false" data-default-game-mode="finishOnDouble" data-default-show-heatmap="false" data-default-heatmap-resolution="30" data-default-samples="1000">
+            <div class="page-inner page-inner--wide">
+                <h2>Minimize Rounds</h2>
+                <p class="subtitle" data-role="solver-subtitle">Use this higher-cost solver for round-level strategy and long batch calculations.</p>
+
+                <div class="two-col">
+                    <div class="canvas-wrap">
+                        <div class="canvas-toolbar">
+                            <label class="toggle-label toggle-label--inline">
+                                <input type="checkbox" data-role="show-heatmap">
+                                <span>Heatmap</span>
+                            </label>
+                        </div>
+                        <canvas data-role="solver-canvas" width="700" height="700"></canvas>
+                    </div>
+
+                    <div class="controls-panel">
+                        <div class="control-group">
+                            <h3><span class="cg-icon">⚙</span>Game Settings</h3>
+                            <label class="field">
+                                <span>Game Mode</span>
+                                <select data-role="game-mode">
+                                    <option value="finishOnDouble">Finish on Double</option>
+                                    <option value="finishOnAny">Finish on Any</option>
+                                </select>
+                            </label>
+                            <label class="field">
+                                <span>Points Remaining</span>
+                                <div class="state-nav">
+                                    <button data-role="btn-points-prev" class="btn btn-secondary btn-arrow"
+                                        title="Previous points remaining (←)">◀</button>
+                                    <input type="number" data-role="points-remaining" min="1" max="1000" value="501">
+                                    <button data-role="btn-points-next" class="btn btn-secondary btn-arrow"
+                                        title="Next points remaining (→)">▶</button>
+                                </div>
+                            </label>
+                            <label class="field">
+                                <span>Throw In Round</span>
+                                <div class="state-nav">
+                                    <button data-role="btn-throw-prev" class="btn btn-secondary btn-arrow"
+                                        title="Previous throw in round">◀</button>
+                                    <input type="number" data-role="throw-number" min="1" max="3" value="1" readonly>
+                                    <button data-role="btn-throw-next" class="btn btn-secondary btn-arrow"
+                                        title="Next throw in round">▶</button>
+                                </div>
+                            </label>
+                            <label class="field">
+                                <span>Round Start Score</span>
+                                <input type="number" data-role="round-start-score" min="1" max="1000" value="501">
+                            </label>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">◈</span>Solver</h3>
+                            <label class="field">
+                                <span>Aim Samples</span>
+                                <input type="number" data-role="aim-samples" min="100" max="20000" value="1000">
+                            </label>
+                            <button data-role="btn-solve" class="btn">Solve</button>
+                            <div class="batch-controls">
+                                <label class="field">
+                                    <span>Solve Up To Points Remaining</span>
+                                    <input type="number" data-role="solve-up-to" min="1" max="1000" value="170">
+                                </label>
+                                <label class="toggle-label toggle-label--inline">
+                                    <input type="checkbox" data-role="precompute-all-round-starts">
+                                    <span>Also precompute all round start scores up to this value</span>
+                                </label>
+                                <button data-role="btn-solve-up-to" class="btn btn-secondary">Solve up to a score</button>
+                                <button data-role="btn-cancel-solve" class="btn btn-danger" disabled>Cancel solve</button>
+                                <div class="batch-progress" data-role="batch-progress" hidden>
+                                    <p class="muted" data-role="batch-progress-text">Preparing…</p>
+                                    <progress data-role="batch-progress-bar" value="0" max="1"></progress>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">★</span>Results</h3>
+                            <div data-role="solve-results" class="info-box">
+                                <p class="muted">Press Solve to compute the optimal strategy.</p>
+                            </div>
+                        </div>
+
+                        <div class="control-group">
+                            <h3><span class="cg-icon">⊞</span>Visualization</h3>
+                            <label class="field" data-role="heatmap-res-field">
+                                <span>Heatmap Resolution</span>
+                                <select data-role="heatmap-resolution">
+                                    <option value="20">20 × 20 (fast)</option>
+                                    <option value="30" selected>30 × 30</option>
+                                    <option value="50">50 × 50</option>
+                                </select>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="instructions-box">
+                    <h3>How to Use This Tab</h3>
+                    <div class="instructions-content">
+                        <h4>Manual solve mode</h4>
+                        <ul>
+                            <li>This tab never solves automatically after setting changes.</li>
+                            <li>Use <strong>Solve</strong> for a single points remaining value, or <strong>Solve up to a score</strong> for sequential calculations.</li>
+                        </ul>
+
+                        <h4>Batch solve</h4>
+                        <ul>
+                            <li>The batch button computes all values from 1 up to your chosen score.</li>
+                            <li>A progress bar shows exactly what is currently being calculated.</li>
+                            <li>This can take a long time for high scores and high heatmap resolutions.</li>
+                        </ul>
 
                         <h4>Keyboard shortcuts</h4>
                         <table class="shortcut-table">
                             <tr>
                                 <td><kbd>←</kbd></td>
-                                <td>Previous state (−1) and auto-solve</td>
+                                <td>Previous points remaining (−1)</td>
                             </tr>
                             <tr>
                                 <td><kbd>→</kbd></td>
-                                <td>Next state (+1) and auto-solve</td>
+                                <td>Next points remaining (+1)</td>
                             </tr>
                         </table>
                     </div>

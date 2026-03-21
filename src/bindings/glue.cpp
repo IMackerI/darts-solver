@@ -51,6 +51,38 @@ SolveResult solverSolve(Solver& solver, Game::State state) {
     return SolveResult{score, aim};
 }
 
+SolveResult solverSolveMinRoundsRoundState(
+    SolverMinRounds& solver,
+    Game::State round_start_score,
+    Game::State current_score,
+    unsigned int throw_number
+) {
+    auto [score, aim] = solver.solve_round_state(round_start_score, current_score, throw_number);
+    return SolveResult{score, aim};
+}
+
+std::vector<std::vector<double>> solverHeatMapMinRoundsRoundState(
+    SolverMinRounds& solver,
+    Game::State round_start_score,
+    Game::State current_score,
+    unsigned int throw_number,
+    size_t rows,
+    size_t cols
+) {
+    auto bounds = solver.get_game().get_target_bounds();
+    std::vector<std::vector<double>> heat_map(rows, std::vector<double>(cols, 0.0));
+
+    for (size_t c = 0; c < cols; ++c) {
+        for (size_t r = 0; r < rows; ++r) {
+            double x = bounds.min.x + (bounds.max.x - bounds.min.x) * (c + 0.5) / cols;
+            double y = bounds.min.y + (bounds.max.y - bounds.min.y) * (r + 0.5) / rows;
+            heat_map[r][c] = solver.solve_aim_round_state(round_start_score, current_score, throw_number, Vec2{x, y});
+        }
+    }
+
+    return heat_map;
+}
+
 EMSCRIPTEN_BINDINGS(darts_module) {
     // Register vector types
     register_vector<double>("VectorDouble");
@@ -119,8 +151,13 @@ EMSCRIPTEN_BINDINGS(darts_module) {
     class_<MaxPointsSolver, base<Solver>>("MaxPointsSolver")
         .constructor<const Game&, size_t>();
     
+    class_<SolverMinRounds, base<Solver>>("SolverMinRounds")
+        .constructor<const Game&, unsigned int, size_t>();
+    
     // Wrapper function for Solver::solve (returns SolveResult instead of std::pair)
     function("solverSolve", &solverSolve);
+    function("solverSolveMinRoundsRoundState", &solverSolveMinRoundsRoundState);
+    function("solverHeatMapMinRoundsRoundState", &solverHeatMapMinRoundsRoundState);
     
     // HeatMapVisualizer
     class_<HeatMapVisualizer>("HeatMapVisualizer")

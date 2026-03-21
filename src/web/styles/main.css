@@ -137,6 +137,12 @@ body { display: flex; }
 }
 .nav-link.active .nav-icon { opacity: 1; color: var(--accent); }
 
+.nav-link.nav-link-disabled {
+    opacity: .45;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
 .sidebar-footer { margin-top: auto; padding: 16px; }
 .status {
     font-size: .75rem;
@@ -434,6 +440,34 @@ body { display: flex; }
 .btn-danger { background: #5c1a1a; color: var(--red); border: 1px solid rgba(244,135,113,.2); }
 .btn-danger:hover { background: #6e2121; box-shadow: 0 0 12px rgba(244,135,113,.25); }
 .btn-row { display: flex; gap: 8px; flex-wrap: wrap; }
+
+.batch-controls {
+    margin-top: 10px;
+    padding-top: 10px;
+    border-top: 1px dashed var(--border);
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.batch-progress {
+    background: var(--bg-input);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 8px 10px;
+}
+
+.batch-progress p {
+    margin: 0 0 6px;
+    font-size: .8rem;
+}
+
+.batch-progress progress {
+    width: 100%;
+    height: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+}
 
 /* ===== Form Fields ===== */
 .field { display: flex; flex-direction: column; gap: 5px; margin-bottom: 12px; }

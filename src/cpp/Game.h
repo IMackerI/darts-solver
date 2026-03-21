@@ -64,6 +64,9 @@ public:
      */
     [[nodiscard]] Bounds get_target_bounds() const;
     
+    /** @brief Compute probability distribution of physical hits when aiming at p. Cached. */
+    [[nodiscard]] HitDistribution throw_at_distribution(Vec2 p) const;
+
     virtual ~Game() = default;
     
     /**

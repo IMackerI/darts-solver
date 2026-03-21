@@ -5,26 +5,44 @@
 #include <random>
 
 namespace {
-    // Dunavant rule 5 (degree 5, 7 quadrature points) for unit reference triangle
-    // (0,0)-(1,0)-(0,1). Expanded from compressed barycentric suborders [1,3,3].
+    // Dunavant rule 10 (25 quadrature points) for unit reference triangle
+    // (0,0)-(1,0)-(0,1). Expanded from compressed barycentric suborders.
     // Weights sum to 1.0 (normalized to reference triangle area).
     // Reference: Dunavant, "High Degree Efficient Symmetrical Gaussian Quadrature
     // Rules for the Triangle", IJNME Vol 21, 1985, pp. 1129-1148.
-    constexpr int QUAD_NPTS = 7;
+    constexpr int QUAD_NPTS = 25;
     constexpr double quad_r[QUAD_NPTS] = {
-        0.333333333333333,
-        0.059715871789770, 0.470142064105115, 0.470142064105115,
-        0.797426985353087, 0.101286507323456, 0.101286507323456
+        0.333333333333333, 0.028844733232685, 0.485577633383657,
+        0.485577633383657, 0.109481575485037, 0.109481575485037,
+        0.781036849029926, 0.141707219414880, 0.141707219414880,
+        0.307939838764121, 0.307939838764121, 0.550352941820999,
+        0.550352941820999, 0.025003534476269, 0.025003534476269,
+        0.246672560639903, 0.246672560639903, 0.728323904597411,
+        0.728323904597411, 0.009540815400299, 0.009540815400299,
+        0.066803251012200, 0.066803251012200, 0.923655933587500,
+        0.923655933587500,
     };
     constexpr double quad_s[QUAD_NPTS] = {
-        0.333333333333333,
-        0.470142064105115, 0.470142064105115, 0.059715871789770,
-        0.101286507323456, 0.101286507323456, 0.797426985353087
+        0.333333333333333, 0.485577633383657, 0.028844733232685,
+        0.485577633383657, 0.109481575485037, 0.781036849029926,
+        0.109481575485037, 0.307939838764121, 0.550352941820999,
+        0.141707219414880, 0.550352941820999, 0.141707219414880,
+        0.307939838764121, 0.246672560639903, 0.728323904597411,
+        0.025003534476269, 0.728323904597411, 0.025003534476269,
+        0.246672560639903, 0.066803251012200, 0.923655933587500,
+        0.009540815400299, 0.923655933587500, 0.009540815400299,
+        0.066803251012200,
     };
     constexpr double quad_w[QUAD_NPTS] = {
-        0.225000000000000,
-        0.132394152788506, 0.132394152788506, 0.132394152788506,
-        0.125939180544827, 0.125939180544827, 0.125939180544827
+        0.090817990382754, 0.036725957756467, 0.036725957756467,
+        0.036725957756467, 0.045321059435528, 0.045321059435528,
+        0.045321059435528, 0.072757916845420, 0.072757916845420,
+        0.072757916845420, 0.072757916845420, 0.072757916845420,
+        0.072757916845420, 0.028327242531057, 0.028327242531057,
+        0.028327242531057, 0.028327242531057, 0.028327242531057,
+        0.028327242531057, 0.009421666963733, 0.009421666963733,
+        0.009421666963733, 0.009421666963733, 0.009421666963733,
+        0.009421666963733,
     };
 
     Vec2 ref_to_physical(Vec2 v0, Vec2 v1, Vec2 v2, double r, double s) {
@@ -136,17 +154,47 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
     const auto& verts = region.get_vertices();
     if (verts.size() < 3) return 0.0;
 
+    double poly_area = 0.0;
+    for (size_t i = 1; i + 1 < verts.size(); ++i) {
+        poly_area += signed_triangle_area(verts[0], verts[i], verts[i + 1]);
+    }
+    poly_area = std::abs(poly_area);
+
+    double var_measure = cov_[0][0] + cov_[1][1];
+    
+    // Narrow distribution fallback: if the polygon is much bigger than the variance,
+    // the quadrature method breaks. Use a fast sampling strategy instead.
+    if (poly_area > 200.0 * var_measure) {
+        size_t num_samples = 50; 
+        size_t count = 0;
+        for (size_t i = 0; i < num_samples; ++i) {
+            if (region.contains(sample() + offset)) {
+                ++count;
+            }
+        }
+        return static_cast<double>(count) / static_cast<double>(num_samples);
+    }
+
+    Vec2 center(0.0, 0.0);
+    for (const auto& v : verts) {
+        center.x += v.x;
+        center.y += v.y;
+    }
+    center.x /= verts.size();
+    center.y /= verts.size();
+
     double total = 0.0;
 
-    // Fan triangulation from vertex 0 (works for convex polygons)
-    for (size_t i = 1; i + 1 < verts.size(); ++i) {
-        Vec2 v0 = verts[0], v1 = verts[i], v2 = verts[i + 1];
-        double area = triangle_area(v0, v1, v2);
+    for (size_t i = 0; i < verts.size(); ++i) {
+        Vec2 v0 = center;
+        Vec2 v1 = verts[i];
+        Vec2 v2 = verts[(i + 1) % verts.size()];
+        double area = signed_triangle_area(v0, v1, v2);
 
         for (int q = 0; q < QUAD_NPTS; ++q) {
             Vec2 p = ref_to_physical(v0, v1, v2, quad_r[q], quad_s[q]);
             total += area * quad_w[q] * probability_density(p - offset);
         }
     }
-    return total;
+    return std::abs(total);
 }

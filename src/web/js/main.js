@@ -14,16 +14,23 @@ let targetBounds = null;
 /* ---------- routing ---------- */
 
 const pages = {
-    '':          'landing',
-    'calibrate': 'calibration',
-    'solve':     'solver',
+    '':                 'landing',
+    'calibrate':        'calibration',
+    'solve':            'solver-min-throws',
+    'solve/max-points': 'solver-max-points',
+    'solve/min-throws': 'solver-min-throws',
+    'solve/min-rounds': 'solver-min-rounds',
 };
 /** Returns the current route name derived from the URL hash.
- * @returns {string} One of 'landing', 'calibration', 'solver'.
+ * @returns {string} One of landing/calibration/solver-* page keys.
  */
 function getRoute() {
-    const hash = location.hash.replace(/^#\/?/, '');
-    return pages[hash] ?? 'landing';
+    const raw = (location.hash || '').trim();
+    const noQuery = raw.split('?')[0];
+    const normalized = decodeURIComponent(noQuery)
+        .replace(/^#\/?/, '')
+        .replace(/\/+$/, '');
+    return pages[normalized] ?? 'landing';
 }
 
 let currentPage = null;
@@ -38,7 +45,7 @@ function navigate() {
 
     // unmount previous page
     if (currentPage === 'calibration') CalibrationPage.unmount();
-    if (currentPage === 'solver')      SolverPage.unmount();
+    if (currentPage?.startsWith('solver-')) SolverPage.unmount();
 
     // toggle visibility
     document.querySelectorAll('.page').forEach(el => el.classList.remove('active'));
@@ -53,7 +60,7 @@ function navigate() {
 
     // mount new page
     if (page === 'calibration' && targetBeds) CalibrationPage.mount(targetBeds, targetBounds);
-    if (page === 'solver'      && targetBeds) SolverPage.mount(targetBeds, targetBounds);
+    if (page.startsWith('solver-') && targetBeds) SolverPage.mount(page, targetBeds, targetBounds);
 }
 
 /* ---------- init ---------- */
@@ -64,6 +71,26 @@ function navigate() {
  */
 async function init() {
     State.loadFromStorage();
+
+    const workerFlag = window.DARTS_USE_WORKERS;
+    Wasm.setWorkerMode(workerFlag !== false);
+
+    // Ensure nav works even if hashchange is not dispatched by the environment.
+    document.querySelectorAll('.nav-link[href^="#/"]').forEach((link) => {
+        link.addEventListener('click', (e) => {
+            const href = link.getAttribute('href');
+            if (!href) return;
+            if (link.classList.contains('nav-link-disabled')) {
+                e.preventDefault();
+                return;
+            }
+            e.preventDefault();
+            if (location.hash !== href) {
+                location.hash = href;
+            }
+            navigate();
+        });
+    });
 
     // Navigate immediately (before WASM loads) so the landing page shows
     window.addEventListener('hashchange', navigate);
@@ -85,7 +112,7 @@ async function init() {
 
         // Re-mount current page now that data is available
         if (currentPage === 'calibration') CalibrationPage.mount(targetBeds, targetBounds);
-        if (currentPage === 'solver')      SolverPage.mount(targetBeds, targetBounds);
+        if (currentPage?.startsWith('solver-')) SolverPage.mount(currentPage, targetBeds, targetBounds);
 
     } catch (err) {
         console.error('WASM init failed:', err);

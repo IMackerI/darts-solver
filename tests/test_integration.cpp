@@ -722,3 +722,108 @@ TEST(Integration, HeatMapWithDifferentSolvers) {
     EXPECT_GT(min_points, 0.0) << "Expected points should be positive";
     EXPECT_LT(max_points, 50.0) << "Max points shouldn't exceed highest zone value";
 }
+
+
+// === SolverMinRounds Tests ===
+
+TEST(SolverMinRounds, BasicFunctionality) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 100);
+    GameFinishOnDouble game(target, dist);
+
+    // Use a small number of samples for speed in tests
+    SolverMinRounds solver(game, 3, 225);
+
+    // Solve for 0, should be 0 rounds
+    auto res_0 = solver.solve(0);
+    EXPECT_NEAR(res_0.first, 0.0, 1e-6);
+
+    // Solve for an easy double
+    auto res_40 = solver.solve(40);
+    EXPECT_GT(res_40.first, 0.0);
+    EXPECT_LT(res_40.first, 100.0); // Should be reasonably reachable
+}
+
+TEST(SolverMinRounds, ThrowsPerRoundComparison) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 100);
+    GameFinishOnDouble game(target, dist);
+
+    // One solver gets 1 dart per round, the other gets 3
+    SolverMinRounds solver_1_dart(game, 1, 225);
+    SolverMinRounds solver_3_dart(game, 3, 225);
+
+    auto res_1 = solver_1_dart.solve(40);
+    auto res_3 = solver_3_dart.solve(40);
+
+    // Allowing 3 throws per round should take strictly fewer rounds on average
+    // than allowing only 1 throw per round.
+    EXPECT_LT(res_3.first, res_1.first);
+}
+
+TEST(SolverMinRounds, UnwinnableStateHandling) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{1.0, 0.0}, {0.0, 1.0}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 100);
+    // Game where you MUST finish on a double
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 100);
+    
+    // State 1 is unwinnable in GameFinishOnDouble (cannot score 1 with a double)
+    auto res_1 = solver.solve(1);
+    
+    // Should be penalized with INFINITE_SCORE (1e9)
+    EXPECT_GE(res_1.first, 1e8);
+}
+
+TEST(SolverMinRounds, OriginalTarget) {
+    Target target("/home/macker/School/2zimni/cpp/darts-solver/tests/target.out");
+    NormalDistribution::covariance cov = {{{100.0, 0.0}, {0.0, 100.0}}};
+    NormalDistributionRandom dist(cov, Vec2{0, 0}, 100);
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 501);
+    
+    // Test that a standard score does not result in INFINITE_SCORE
+    auto res = solver.solve(2);
+    
+    EXPECT_LT(res.first, 1e4);
+    
+    auto res_full = solver.solve(501);
+    EXPECT_LT(res_full.first, 1e4);
+}
+
+TEST(SolverMinRounds, RoundStateThrowOneMatchesLegacySolve) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 225);
+
+    auto legacy = solver.solve(40);
+    auto round_state = solver.solve_round_state(40, 40, 1);
+
+    EXPECT_NEAR(legacy.first, round_state.first, 1e-6);
+    EXPECT_NEAR(legacy.second.x, round_state.second.x, 1e-9);
+    EXPECT_NEAR(legacy.second.y, round_state.second.y, 1e-9);
+}
+
+TEST(SolverMinRounds, MidRoundDependsOnRoundStartScore) {
+    Target target = create_simple_target();
+    NormalDistribution::covariance cov = {{{200.0, 0.0}, {0.0, 200.0}}};
+    NormalDistributionQuadrature dist(cov, Vec2{0, 0});
+    GameFinishOnDouble game(target, dist);
+
+    SolverMinRounds solver(game, 3, 225);
+
+    auto state_from_40 = solver.solve_round_state(40, 32, 2);
+    auto state_from_80 = solver.solve_round_state(80, 32, 2);
+
+    // Busts reset to round_start_score, so identical current score on the same throw
+    // can have a different expected value.
+    EXPECT_NE(state_from_40.first, state_from_80.first);
+}
