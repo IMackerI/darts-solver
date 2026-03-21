@@ -7,6 +7,7 @@
 #include <unordered_set>
 #include <vector>
 #include <unordered_map>
+#include <cstdint>
 
 /**
  * @defgroup solver Solvers
@@ -144,6 +145,7 @@ private:
     unsigned int throws_per_round_;
     std::unordered_map<RoundStateKey, std::pair<Score, Vec2>, RoundStateKeyHash> memoization_;
     std::unordered_set<Game::State> winable_;
+    std::unordered_map<uint64_t, double> round_dp_cache_;
 
     // Evaluates the expected rounds from state `current_score` with `throws_left` darts remaining.
     // `X_start_guess` is the assumed total expected rounds from `start_score` (used when busting).
@@ -155,6 +157,8 @@ private:
     std::pair<Score, Vec2> solve_nonstart_round_state(Game::State round_start_score, Game::State current_score, unsigned int throw_number);
     [[nodiscard]] bool is_valid_throw_number(unsigned int throw_number) const;
     [[nodiscard]] RoundStateKey make_state_key(Game::State round_start_score, Game::State current_score, unsigned int throw_number) const;
+    [[nodiscard]] uint64_t make_round_dp_cache_key(Game::State round_start_score, Game::State current_score, unsigned int throws_left) const;
+    double evaluate_dp_cached(Game::State start_score, Game::State current_score, unsigned int throws_left, double round_start_value);
 
 public:
     /**
