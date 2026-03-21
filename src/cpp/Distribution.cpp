@@ -157,11 +157,20 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
         return static_cast<double>(count) / static_cast<double>(num_samples);
     }
 
+    Vec2 center(0.0, 0.0);
+    for (const auto& v : verts) {
+        center.x += v.x;
+        center.y += v.y;
+    }
+    center.x /= verts.size();
+    center.y /= verts.size();
+
     double total = 0.0;
 
-    // Fan triangulation from vertex 0 (works for convex polygons)
-    for (size_t i = 1; i + 1 < verts.size(); ++i) {
-        Vec2 v0 = verts[0], v1 = verts[i], v2 = verts[i + 1];
+    for (size_t i = 0; i < verts.size(); ++i) {
+        Vec2 v0 = center;
+        Vec2 v1 = verts[i];
+        Vec2 v2 = verts[(i + 1) % verts.size()];
         double area = signed_triangle_area(v0, v1, v2);
 
         for (int q = 0; q < QUAD_NPTS; ++q) {
