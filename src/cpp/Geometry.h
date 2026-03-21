@@ -64,6 +64,18 @@ inline double triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
 
 /**
  * @ingroup geometry
+ * @brief Compute the signed area of a triangle.
+ * @param v0 First vertex
+ * @param v1 Second vertex
+ * @param v2 Third vertex
+ * @return Signed area of the triangle
+ */
+inline double signed_triangle_area(Vec2 v0, Vec2 v1, Vec2 v2) {
+    return 0.5 * ((v1.x - v0.x) * (v2.y - v0.y) - (v2.x - v0.x) * (v1.y - v0.y));
+}
+
+/**
+ * @ingroup geometry
  * @brief A simple polygon represented by vertices.
  */
 class Polygon {

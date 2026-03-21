@@ -138,8 +138,9 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
 
     double poly_area = 0.0;
     for (size_t i = 1; i + 1 < verts.size(); ++i) {
-        poly_area += triangle_area(verts[0], verts[i], verts[i + 1]);
+        poly_area += signed_triangle_area(verts[0], verts[i], verts[i + 1]);
     }
+    poly_area = std::abs(poly_area);
 
     double var_measure = cov_[0][0] + cov_[1][1];
     
@@ -161,12 +162,12 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
     // Fan triangulation from vertex 0 (works for convex polygons)
     for (size_t i = 1; i + 1 < verts.size(); ++i) {
         Vec2 v0 = verts[0], v1 = verts[i], v2 = verts[i + 1];
-        double area = triangle_area(v0, v1, v2);
+        double area = signed_triangle_area(v0, v1, v2);
 
         for (int q = 0; q < QUAD_NPTS; ++q) {
             Vec2 p = ref_to_physical(v0, v1, v2, quad_r[q], quad_s[q]);
             total += area * quad_w[q] * probability_density(p - offset);
         }
     }
-    return total;
+    return std::abs(total);
 }
