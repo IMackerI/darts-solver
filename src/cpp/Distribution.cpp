@@ -136,6 +136,26 @@ double NormalDistributionQuadrature::integrate_probability(const Polygon& region
     const auto& verts = region.get_vertices();
     if (verts.size() < 3) return 0.0;
 
+    double poly_area = 0.0;
+    for (size_t i = 1; i + 1 < verts.size(); ++i) {
+        poly_area += triangle_area(verts[0], verts[i], verts[i + 1]);
+    }
+
+    double var_measure = cov_[0][0] + cov_[1][1];
+    
+    // Narrow distribution fallback: if the polygon is much bigger than the variance,
+    // the quadrature method breaks. Use a fast sampling strategy instead.
+    if (poly_area > 10.0 * var_measure) {
+        size_t num_samples = 50; 
+        size_t count = 0;
+        for (size_t i = 0; i < num_samples; ++i) {
+            if (region.contains(sample() + offset)) {
+                ++count;
+            }
+        }
+        return static_cast<double>(count) / static_cast<double>(num_samples);
+    }
+
     double total = 0.0;
 
     // Fan triangulation from vertex 0 (works for convex polygons)
