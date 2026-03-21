@@ -164,6 +164,9 @@ class SolverTabController {
         for (const role of trackedRoles) {
             this.q(role)?.addEventListener('change', (e) => {
                 e.target.blur();
+                if (role === 'points-remaining' || role === 'round-start-score') {
+                    this._syncMinRoundsRoundStateControls();
+                }
                 this._syncFormToState();
                 if (role === 'solve-up-to') this._updateSolveUpToButtonLabel();
                 if (this.autoSolve) this._scheduleAutoSolve();
@@ -633,6 +636,11 @@ class SolverTabController {
             roundStartInput.setAttribute('disabled', 'disabled');
         } else {
             roundStartInput.removeAttribute('disabled');
+            const pointsRemaining = parseInt(pointsInput.value, 10) || 0;
+            const roundStartScore = parseInt(roundStartInput.value, 10) || 0;
+            if (pointsRemaining > roundStartScore) {
+                roundStartInput.value = String(pointsRemaining);
+            }
         }
     }
 
