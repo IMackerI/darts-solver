@@ -8,8 +8,12 @@
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Space+Grotesk:wght@700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="styles/main.css">
+    <!-- Animation libs (landing page only) -->
+    <script src="https://cdn.jsdelivr.net/npm/tsparticles@3/tsparticles.bundle.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/gsap.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/gsap@3/dist/ScrollTrigger.min.js" defer></script>
 </head>
 
 <body>
@@ -26,64 +30,116 @@
             <li><a href="#/solve/max-points" class="nav-link" data-page="solver-max-points"><span class="nav-icon">◉</span>Maximize Points</a></li>
             <li><a href="#/solve/min-throws" class="nav-link" data-page="solver-min-throws"><span class="nav-icon">◎</span>Minimize Throws</a></li>
             <li><a href="#/solve/min-rounds" class="nav-link" data-page="solver-min-rounds"><span class="nav-icon">◌</span>Minimize Rounds</a></li>
-            <li><a href="docs/index.html" class="nav-link" target="_blank" rel="noopener"><span class="nav-icon">📖</span>Docs</a></li>
         </ul>
         <div class="sidebar-footer">
-            <div id="wasm-status" class="status loading">Loading WASM…</div>
+            <!-- WASM dot — small status indicator, title tooltip for debugging -->
+            <span id="wasm-status" class="wasm-dot loading" title="Loading WASM…"></span>
+            <!-- Docs + GitHub (traditional badge) -->
+            <a href="docs/index.html" class="sidebar-docs-link" target="_blank" rel="noopener">📖 Docs</a>
+            <a href="https://github.com/IMackerI/darts-solver" class="sidebar-gh-badge" target="_blank" rel="noopener" title="GitHub">
+                <img src="https://img.shields.io/github/stars/IMackerI/darts-solver?style=social" alt="GitHub Stars" loading="lazy">
+            </a>
         </div>
     </nav>
 
     <!-- Main Content Area -->
     <main id="content">
 
-        <!-- Landing Page -->
+        <!-- ═══════════════ LANDING PAGE ═══════════════ -->
         <section id="page-landing" class="page active">
-            <div class="page-inner">
-                <div class="hero">
-                    <div class="hero-badge">WebAssembly Powered</div>
-                    <h2>Darts Solver</h2>
-                    <p class="lead">
-                        Find the optimal aiming strategy for any game state using probabilistic modelling
-                        and Monte Carlo simulation — all running in your browser.
+
+            <!-- Particle canvas background -->
+            <canvas id="landing-particles"></canvas>
+
+            <!-- ── HERO ── -->
+            <div class="lp-hero">
+                <div class="lp-hero-inner">
+
+
+                    <h1 class="lp-title" id="lp-title">
+                        <span class="lp-title-line">How to</span>
+                        <span class="lp-title-line lp-title-alt">win</span>
+                        <span class="lp-title-line lp-title-alt2">darts 🤔</span>
+                    </h1>
+
+                    <p class="lp-intro">
+                        Ever watched a darts tournament where they flash up
+                        <span class="lp-checkout">D18 · D18 · Bull</span>
+                        as the checkout route?<br>
+                        You tell yourself — <em>oh yeah, obviously</em>.<br>
+                        Then you get to the same score, miss the double, hit a one,
+                        and launch the last dart straight into the ceiling.
                     </p>
-                </div>
 
-                <div class="card-grid">
-                    <div class="card card--step">
-                        <div class="card-step-num">01</div>
-                        <h3>Calibrate</h3>
-                        <p>
-                            Throw darts at the bull's-eye and click where they land.
-                            The solver estimates your personal accuracy distribution.
-                        </p>
-                        <a href="#/calibrate" class="btn btn-card">Start Calibration →</a>
+                    <div class="lp-questions">
+                        <p class="lp-q lp-q--1">What's the <em>actual</em> best place to aim — <strong>for you</strong>, with your skill level?</p>
+                        <p class="lp-q lp-q--2">Do you want to shave off 0.001 darts per leg?</p>
                     </div>
-                    <div class="card card--step">
-                        <div class="card-step-num">02</div>
-                        <h3>Solve</h3>
-                        <p>
-                            Pick points remaining and see the optimal aim point, expected throws
-                            to finish, and a heatmap of scores across the board.
-                        </p>
-                        <a href="#/solve/min-throws" class="btn btn-card">Open Solver →</a>
-                    </div>
-                </div>
 
-                <div class="info-section">
-                    <h3>How it works</h3>
-                    <ul>
-                        <li><strong>Your accuracy</strong> is modelled as a 2D Gaussian distribution estimated from your
-                            calibration shots.</li>
-                        <li><strong>Solver search</strong> finds the aim point that minimises expected throws for
-                            any points remaining value.</li>
-                        <li><strong>Heatmaps</strong> visualise expected throws or expected points across every possible
-                            aim point.</li>
-                    </ul>
+                    <div class="lp-ctas">
+                        <a href="#/calibrate" class="btn lp-btn-primary">Start Calibrating 🎯</a>
+                        <a href="#/solve/min-throws" class="btn lp-btn-secondary">Go to Solver →</a>
+                    </div>
                 </div>
             </div>
+
+            <!-- ── LUCKY BREAK ── -->
+            <div class="lp-section lp-luck" data-gsap-reveal>
+                <div class="lp-section-inner">
+                    <p class="lp-section-kicker">Well, you're in luck.</p>
+                    <h2 class="lp-section-heading">May I propose the <span class="lp-title-line lp-title-alt2">optimal</span> darts solver.</h2>
+                    <p class="lp-section-body">
+                        Calibrate your throw, and I will crunch the numbers. 
+                        <br> For every possble aim point. Completely optimal. Pure maths. 
+                        <br> (And a little random simulation maybe)
+                    </p>
+                </div>
+            </div>
+
+            <!-- ── HOW TO USE ── -->
+            <div class="lp-section lp-howto" data-gsap-reveal>
+                <div class="lp-section-inner">
+                    <p class="lp-section-kicker">How do I use it?</p>
+                    <h2 class="lp-section-heading">Excellent question.</h2>
+                    <p class="lp-section-body">Being here is already half the work done.</p>
+
+                    <div class="lp-steps-vertical">
+                        <div class="lp-step-v" data-gsap-step>
+                            <div class="lp-step-v-num">01</div>
+                            <div class="lp-step-v-content">
+                                <h3 class="lp-step-v-title">You calibrate</h3>
+                                <p class="lp-step-v-text">Throw at the bull's-eye. Click where the dart actually lands. Hit <em>Estimate</em>. Done. The solver now knows exactly how bad you are.</p>
+                                <a href="#/calibrate" class="btn lp-btn-v">Start Calibration →</a>
+                            </div>
+                        </div>
+                        <div class="lp-step-v" data-gsap-step>
+                            <div class="lp-step-v-num">02</div>
+                            <div class="lp-step-v-content">
+                                <h3 class="lp-step-v-title">You find out</h3>
+                                <p class="lp-step-v-text">Pick a tab. Stare at the result. Question your entire darts career. Start winning.</p>
+                                <a href="#/solve/min-throws" class="btn lp-btn-v">Go to Solver →</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <p class="lp-footnote">The individual modes and what they mean are explained in their respective tabs.</p>
+                </div>
+            </div>
+
+            <!-- ── TECH STRIP ── -->
+            <div class="lp-tech-strip" data-gsap-reveal>
+                <span>WebAssembly</span>
+                <span class="lp-tech-sep">·</span>
+                <span>2D Gaussian Modelling</span>
+                <span class="lp-tech-sep">·</span>
+                <span>Monte Carlo Simulation</span>
+                <span class="lp-tech-sep">·</span>
+                <span>Runs 100% in Your Browser</span>
+            </div>
+
         </section>
 
-        <!-- Calibration Page -->
+        <!-- ═══════════════ CALIBRATION PAGE ═══════════════ -->
         <section id="page-calibration" class="page">
             <div class="page-inner page-inner--wide">
                 <h2>Calibration</h2>
@@ -156,7 +212,7 @@
                         <ul>
                             <li>Throw naturally — don't try to be extra careful. The solver needs your <em>real</em>
                                 accuracy.</li>
-                            <li>If you missclick, use <strong>Undo Last</strong> to remove the most recent shot.</li>
+                            <li>If you misclick, use <strong>Undo Last</strong> to remove the most recent shot.</li>
                             <li>You can <strong>Export</strong> your calibration data as JSON and
                                 <strong>Import</strong> it later, so you don't need to re-calibrate each session.</li>
                             <li>The distribution is automatically saved in your browser's local storage.</li>
@@ -170,10 +226,12 @@
                 </div>
             </div>
         </section>
+
+        <!-- ═══════════════ MAXIMIZE POINTS ═══════════════ -->
         <section id="page-solver-max-points" class="page solver-page" data-solver-type="maxPoints" data-auto-solve="true" data-default-game-mode="finishOnAny" data-default-show-heatmap="true" data-default-heatmap-resolution="100" data-max-points-mode="true">
             <div class="page-inner page-inner--wide">
                 <h2>Maximize Points</h2>
-                <p class="subtitle" data-role="solver-subtitle">Find the best place to aim for the highest expected points on your next throw.</p>
+                <p class="subtitle" data-role="solver-subtitle">Find out how many points you can expect when aiming at any spot on the board.</p>
 
                 <div class="two-col">
                     <div class="canvas-wrap">
@@ -237,10 +295,13 @@
             </div>
         </section>
 
+        <!-- ═══════════════ MINIMIZE THROWS ═══════════════ -->
         <section id="page-solver-min-throws" class="page solver-page" data-solver-type="minThrows" data-auto-solve="true" data-default-game-mode="finishOnDouble" data-default-show-heatmap="true" data-default-heatmap-resolution="50">
             <div class="page-inner page-inner--wide">
                 <h2>Minimize Throws</h2>
-                <p class="subtitle" data-role="solver-subtitle">Configure points remaining and instantly compute the best aiming strategy.</p>
+                <p class="subtitle" data-role="solver-subtitle">
+                    Configure points remaining and instantly compute the best aiming strategy.
+                </p>
 
                 <div class="two-col">
                     <div class="canvas-wrap">
@@ -314,7 +375,7 @@
                         <h4>Game settings</h4>
                         <ul>
                             <li><strong>Game Mode:</strong> Choose checkout rules for your game.</li>
-                            <li><strong>Points Remaining:</strong> Set your current score to finish. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> to step values.</li>
+                            <li><strong>Points Remaining:</strong> Set your current leg score. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> to step values.</li>
                         </ul>
 
                         <h4>Reading the Results</h4>
@@ -338,10 +399,14 @@
             </div>
         </section>
 
+        <!-- ═══════════════ MINIMIZE ROUNDS ═══════════════ -->
         <section id="page-solver-min-rounds" class="page solver-page" data-solver-type="minRounds" data-auto-solve="false" data-default-game-mode="finishOnDouble" data-default-show-heatmap="false" data-default-heatmap-resolution="30" data-default-samples="1000">
             <div class="page-inner page-inner--wide">
                 <h2>Minimize Rounds</h2>
-                <p class="subtitle" data-role="solver-subtitle">Use this higher-cost solver for round-level strategy and long batch calculations.</p>
+                <p class="subtitle" data-role="solver-subtitle">
+                    The full picture — accounts for throw number, leg score, and round start score.
+                    <br> The strongest solver. Won't recalculate unless already cached or you hit Solve.
+                </p>
 
                 <div class="two-col">
                     <div class="canvas-wrap">
