@@ -62,19 +62,23 @@ async function initLandingAnimations() {
                 if (dist < 200) {
                     const force = (200 - dist) / 200;
                     // Muted repulsion (10x reduction)
-                    this.accX -= dx * force * 0.0002; 
-                    this.accY -= dy * force * 0.0002;
+                    this.accX -= dx * force * 0.0003; 
+                    this.accY -= dy * force * 0.0003;
                     // SLOW DOWN: reduce existing velocity when near cursor
                     speedFactor = 0.3 + (dist / 200) * 0.7; 
                 }
 
                 this.vx += this.accX;
                 this.vy += this.accY;
-                this.accX *= 0.85; // Faster decay for smoother feel
-                this.accY *= 0.85;
+                this.accX *= 0.9;
+                this.accY *= 0.9;
+                if (this.vx + this.vy > 3) {
+                    this.vx *= 0.999;
+                    this.vy *= 0.999;
+                }
 
                 // Scroll interaction (speed up)
-                const scrollFactor = 1 + scrollSpeed * 0.05;
+                const scrollFactor = 1 + scrollSpeed * 0.15;
                 this.x += this.vx * speedFactor * scrollFactor;
                 this.y += this.vy * speedFactor * scrollFactor;
 

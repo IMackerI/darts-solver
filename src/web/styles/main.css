@@ -54,17 +54,26 @@
 /* ===== Typography ===== */
 html { font-size: 16px; }
 
-html, body {
-    height: 100%;
-    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+html {
     background: var(--bg);
+}
+
+html, body {
+    height: 100% !important;
+    overflow: hidden !important;
+    position: relative;
+    font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
     color: var(--text);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
 }
 
-/* ===== Layout ===== */
-body { display: flex; }
+body {
+    background: transparent !important;
+    display: flex;
+}
 
 #sidebar {
     width: var(--sidebar-w);
@@ -733,7 +742,6 @@ select:focus, input[type="number"]:focus {
 
 #page-landing {
     position: relative;
-    overflow-x: hidden;
     background: var(--bg);
 }
 
@@ -773,7 +781,7 @@ select:focus, input[type="number"]:focus {
 
 .lp-title-line {
     display: block;
-    font-size: clamp(6.5rem, 15vw, 18rem);
+    font-size: clamp(6.5rem, 20vw, 24rem);
     font-weight: 900;
     letter-spacing: -0.06em;
     color: #fff;
