@@ -494,7 +494,7 @@ class SolverTabController {
         if (this.solverType === 'maxPoints') {
             subtitle.textContent = 'Find the best place to aim for the highest expected points on your next throw.';
         } else if (this.solverType === 'minRounds') {
-            subtitle.textContent = 'Use this higher-cost solver for round-level strategy and long batch calculations.';
+            subtitle.textContent = 'The full picture — accounts for throw number, leg score, and round start score. The strongest solver. Won\'t recalculate unless already cached or you hit Solve.';
         } else {
             subtitle.textContent = 'Configure points remaining and instantly compute the best aiming strategy.';
         }
