@@ -157,8 +157,8 @@
                             <h3><span class="cg-icon">◎</span>Shots</h3>
                             <p id="shot-count">0 shots recorded</p>
                             <div class="btn-row">
-                                <button id="btn-undo" class="btn btn-secondary" disabled>Undo Last</button>
-                                <button id="btn-clear" class="btn btn-danger" disabled>Clear All</button>
+                                <button id="btn-undo" type="button" class="btn btn-secondary" disabled>Undo Last</button>
+                                <button id="btn-clear" type="button" class="btn btn-danger" disabled>Clear All</button>
                             </div>
                         </div>
 
@@ -182,46 +182,28 @@
                 </div>
 
                 <div class="instructions-box">
-                    <h3>How to Calibrate</h3>
+                    <h3><span class="cg-icon">⊕</span>Calibration: Measuring Your Accuracy</h3>
                     <div class="instructions-content">
                         <h4>What is calibration?</h4>
                         <p>
-                            Calibration measures your throwing accuracy.
-                            We assume you are aiming at the bull's-eye. Based on where the darts actually land,
-                            the solver estimates a distribution. Currently the solver models your throws as
-                            a <strong>2D Gaussian (normal) distribution</strong> by estimating your offset (mean) and
-                            the spread (covariance matrix) of that distribution.
+                            Calibration measures your personal throwing accuracy.
+                            We assume you are aiming at the bull's-eye. Based on where the darts land,
+                            the solver models your skill as a <strong>2D Gaussian (normal) distribution</strong>.
+                            It estimates your <em>spread</em> (how much you scatter).
                         </p>
 
                         <h4>Step-by-step</h4>
                         <ol>
-                            <li><strong>Aim at the bull's-eye.</strong> Every throw should be aimed at the exact center
-                                of the board.</li>
-                            <li><strong>Click where your dart lands.</strong> Click the corresponding spot on the
-                                dartboard canvas. A yellow dot appears for each recorded shot.</li>
-                            <li><strong>Repeat 10–30+ times.</strong> More shots give a better estimate. At least 3 are
-                                required, but 15+ is recommended for accuracy.</li>
-                            <li><strong>Click "Estimate Distribution"</strong> to compute your covariance matrix. The
-                                result shows σ<sub>x</sub> and σ<sub>y</sub> (standard deviations in mm) and the full
-                                covariance.</li>
-                            <li><strong>And that's it!</strong> The solver has internally stored your calibration data
-                                and is ready to use it in the solver.</li>
+                            <li><strong>Aim at the bull's-eye.</strong> Every throw should be aimed at the exact same point. Consistency is key.</li>
+                            <li><strong>Don't try to "fix" your aim during calibration.</strong> Throw naturally. The solver's job is to adjust for your natural bias!</li>
+                            <li><strong>Click where your dart lands.</strong> Record the position on the canvas. A yellow dot marks each shot.</li>
+                            <li><strong>Repeat 20–50 times.</strong> More shots yield professional-grade results. While 3 is the minimum, 30+ is recommended for a stable output.</li>
+                            <li><strong>Click "Estimate Distribution"</strong> to compute your profile. Results show σ<sub>x</sub> and σ<sub>y</sub>—lower numbers mean higher consistency.</li>
                         </ol>
 
-                        <h4>Tips for better results</h4>
-                        <ul>
-                            <li>Throw naturally — don't try to be extra careful. The solver needs your <em>real</em>
-                                accuracy.</li>
-                            <li>If you misclick, use <strong>Undo Last</strong> to remove the most recent shot.</li>
-                            <li>You can <strong>Export</strong> your calibration data as JSON and
-                                <strong>Import</strong> it later, so you don't need to re-calibrate each session.</li>
-                            <li>The distribution is automatically saved in your browser's local storage.</li>
-                        </ul>
-
-                        <h4>What the numbers mean</h4>
-                        <p><strong>σ<sub>x</sub></strong> and <strong>σ<sub>y</sub></strong> are standard deviations in
-                            millimetres. The <strong>covariance matrix</strong> [a, b, c, d] captures both the spread
-                            and any correlation between horizontal and vertical errors.</p>
+                        <div class="pro-tip">
+                            <strong>FUN TIP:</strong> We actually calculate your center of aiming. So if you aim all shots at 60, you end up with the same output.
+                        </div>
                     </div>
                 </div>
             </div>
@@ -277,18 +259,20 @@
                 </div>
 
                 <div class="instructions-box">
-                    <h3>How to Use This Tab</h3>
+                    <h3><span class="cg-icon">◉</span>Mode: Maximize Points (Scoring Strategy)</h3>
                     <div class="instructions-content">
                         <h4>What this solves</h4>
                         <ul>
-                            <li>This tab focuses on pure scoring: it finds where your expected points per throw are highest.</li>
-                            <li>Change <strong>Aim Samples</strong> for a faster or more accurate search. The board updates automatically.</li>
+                            <li>This mode focuses on <strong>pure scoring</strong>. It finds where your statistical expected value per throw is highest.</li>
+                            <li>Ideal for the start of a leg (501/301) when you just need to pile on points.</li>
+                            <li>Unlike the checkout solvers, this <em>ignores</em> the risk of "busting" or needing a specific double to finish.</li>
                         </ul>
 
-                        <h4>Heatmap</h4>
+                        <h4>Heatmap & Interpretation</h4>
                         <ul>
-                            <li>Heatmap is enabled by default and shows expected points over the whole board.</li>
-                            <li>Higher resolution gives smoother detail at the cost of computation time.</li>
+                            <li>The <strong>red crosshair</strong> is your mathematically optimal aim point.</li>
+                            <li><strong>Heatmap:</strong> Toggle to see the "expected points" landscape. Brighter areas offer higher rewards given your current accuracy.</li>
+                            <li>A "safe" player might see the T19 area lighting up more than T20 if their vertical spread is high.</li>
                         </ul>
                     </div>
                 </div>
@@ -370,29 +354,20 @@
                 </div>
 
                 <div class="instructions-box">
-                    <h3>How to Use This Tab</h3>
+                    <h3><span class="cg-icon">◎</span>Mode: Minimize Throws (Leg-Closing Strategy)</h3>
                     <div class="instructions-content">
-                        <h4>Game settings</h4>
+                        <h4>The Finish Line</h4>
                         <ul>
-                            <li><strong>Game Mode:</strong> Choose checkout rules for your game.</li>
-                            <li><strong>Points Remaining:</strong> Set your current leg score. Use the ◀ ▶ buttons or <kbd>←</kbd> <kbd>→</kbd> to step values.</li>
+                            <li>This solver calculates the <strong>fewest number of individual darts</strong> to reach zero.</li>
+                            <li><strong>Expected Throws:</strong> Represents how many darts, on average, you'll need from your current score to finish the leg.</li>
+                            <li>It considers both "Finish on Double" (standard) and "Finish on Any" (easier/casual) rules.</li>
                         </ul>
 
-                        <h4>Reading the Results</h4>
+                        <h4>Strategic Heatmap</h4>
                         <ul>
-                            <li>The <strong>red crosshair</strong> on the board shows the computed optimal aim point.
-                            </li>
-                            <li><strong>Expected throws</strong> tells you the average number of darts needed from the selected points remaining.</li>
-                            <li><strong>Aim Samples</strong> controls how many candidate aim points are tested. Higher =
-                                more accurate but slower. 5000 is a good default.</li>
-                        </ul>
-
-                        <h4>Heatmap</h4>
-                        <p>Toggle the heatmap to see how the expected outcome varies across <em>every</em> possible aim point:</p>
-                        <ul>
-                            <li>Uses a turbo colour scale (blue = best, red = worst).</li>
-                            <li>Increase the <strong>resolution</strong> (50×50 → 100×100) for a smoother picture, at
-                                the cost of computation time.</li>
+                            <li><strong>Color of a square means:</strong> If you shoot here, and then throw optimally,you will need this many darts to finish the leg on average.</li>
+                            <li><strong>Blue areas</strong> (on the default scale) represent lower expected throws—these are your targets for a fast finish.</li>
+                            <li>Note how big numbers (like T20) aren't always optimal when you're close to a checkout!</li>
                         </ul>
                     </div>
                 </div>
@@ -502,32 +477,27 @@
                 </div>
 
                 <div class="instructions-box">
-                    <h3>How to Use This Tab</h3>
+                    <h3><span class="cg-icon">◌</span>Mode: Minimize Rounds (The Pro Strategy)</h3>
                     <div class="instructions-content">
-                        <h4>Manual solve mode</h4>
+                        <h4>Full Match-Play Simulation</h4>
+                        <p>
+                            Professional darts is played in <strong>rounds of three</strong>. This solver is the only one that accounts for the "Bust" rule and round-end efficiency.
+                        </p>
                         <ul>
-                            <li>This tab never solves automatically after setting changes.</li>
-                            <li>Use <strong>Solve</strong> for a single points remaining value, or <strong>Solve up to a score</strong> for sequential calculations.</li>
+                            <li><strong>Accounting for Busts:</strong> If you need 4 and hit 5, you return to 4 at the start of the <em>next</em> round. This solver knows that and avoids "dangerous" targets.</li>
+                            <li><strong>Throw Position:</strong> It understands that your strategy changes if you are on dart 1, 2, or 3 of the current round.</li>
+                            <li><strong>Expected Rounds:</strong> The result is the average number of <em>full rounds</em> to finish.</li>
                         </ul>
 
-                        <h4>Batch solve</h4>
+                        <h4>Batch Precomputation</h4>
                         <ul>
-                            <li>The batch button computes all values from 1 up to your chosen score.</li>
-                            <li>A progress bar shows exactly what is currently being calculated.</li>
-                            <li>This can take a long time for high scores and high heatmap resolutions.</li>
+                            <li>Calculating optimal "Rounds" is mathematically intensive. Use <strong>"Solve up to a score"</strong> to build a full strategy table (e.g., from 1 up to 170).</li>
+                            <li>Once computed, switching between scores is instantaneous as the results are cached.</li>
                         </ul>
 
-                        <h4>Keyboard shortcuts</h4>
-                        <table class="shortcut-table">
-                            <tr>
-                                <td><kbd>←</kbd></td>
-                                <td>Previous points remaining (−1)</td>
-                            </tr>
-                            <tr>
-                                <td><kbd>→</kbd></td>
-                                <td>Next points remaining (+1)</td>
-                            </tr>
-                        </table>
+                        <div class="pro-tip">
+                            <strong>WHY USE THIS?</strong> This mode will tell you when to "set up" (e.g., aim for a number that leaves a nice double next round) vs when to "go for it" directly.
+                        </div>
                     </div>
                 </div>
             </div>
