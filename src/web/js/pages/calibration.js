@@ -33,8 +33,12 @@ export function mount(parsedBeds, parsedBounds) {
         const sig = { signal: ac.signal };
 
         canvas.addEventListener('click', _onCanvasClick, sig);
-        document.getElementById('btn-undo').addEventListener('click', _undo, sig);
-        document.getElementById('btn-clear').addEventListener('click', _clear, sig);
+        document.getElementById('btn-undo').addEventListener('click', (e) => { e.preventDefault(); _undo(); }, sig);
+        document.getElementById('btn-clear').addEventListener('click', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            _clear();
+        }, sig);
         document.getElementById('btn-estimate').addEventListener('click', _estimate, sig);
         document.getElementById('btn-export').addEventListener('click', _exportData, sig);
         document.getElementById('btn-import').addEventListener('click', () => {
@@ -91,7 +95,6 @@ function _undo() {
 
 /** Clear all recorded shots after user confirmation. */
 function _clear() {
-    if (!confirm('Clear all shots?')) return;
     State.set('calibration.shots', []);
     State.set('calibration.covariance', null);
     State.set('calibration.mean', null);

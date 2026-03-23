@@ -773,7 +773,7 @@ select:focus, input[type="number"]:focus {
 
 .lp-title-line {
     display: block;
-    font-size: clamp(6.5rem, 20vw, 24rem);
+    font-size: clamp(6.5rem, 15vw, 18rem);
     font-weight: 900;
     letter-spacing: -0.06em;
     color: #fff;
@@ -1035,3 +1035,56 @@ select:focus, input[type="number"]:focus {
     .lp-section-heading { font-size: 4rem; }
     .lp-btn-primary, .lp-btn-secondary { width: 100%; text-align: center; }
 }
+
+/* ===== Enhanced Instructions & Pro Tips ===== */
+.pro-tip {
+    margin-top: 20px;
+    padding: 16px;
+    background: var(--bg-elevated);
+    border-left: 4px solid var(--accent);
+    border-radius: var(--radius-sm);
+    font-size: 0.88rem;
+    color: var(--text-muted);
+}
+
+.pro-tip strong {
+    color: var(--accent);
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    display: block;
+    margin-bottom: 4px;
+}
+
+.instructions-box {
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-md);
+}
+
+.instructions-box::after {
+    content: 'i';
+    position: absolute;
+    top: -10px;
+    right: -10px;
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--bg-hover);
+    pointer-events: none;
+    font-family: 'Space Grotesk', sans-serif;
+    transform: rotate(15deg);
+}
+
+.instructions-box h3 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.instructions-content ul li::marker {
+    color: var(--accent);
+}
+

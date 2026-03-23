@@ -53,25 +53,30 @@ async function initLandingAnimations() {
                 this.accY = 0;
             }
             update() {
-                // Mouse interaction (repulsion)
+                // Mouse interaction (repulsion + slow down)
                 const dx = mouse.x - this.x;
                 const dy = mouse.y - this.y;
                 const dist = Math.sqrt(dx * dx + dy * dy);
-                if (dist < 150) {
-                    const force = (150 - dist) / 150;
-                    this.accX -= dx * force * 0.04;
-                    this.accY -= dy * force * 0.04;
+                let speedFactor = 1.0;
+
+                if (dist < 200) {
+                    const force = (200 - dist) / 200;
+                    // Muted repulsion (10x reduction)
+                    this.accX -= dx * force * 0.0002; 
+                    this.accY -= dy * force * 0.0002;
+                    // SLOW DOWN: reduce existing velocity when near cursor
+                    speedFactor = 0.3 + (dist / 200) * 0.7; 
                 }
 
                 this.vx += this.accX;
                 this.vy += this.accY;
-                this.accX *= 0.9;
-                this.accY *= 0.9;
+                this.accX *= 0.85; // Faster decay for smoother feel
+                this.accY *= 0.85;
 
                 // Scroll interaction (speed up)
-                const factor = 1 + scrollSpeed * 0.05;
-                this.x += this.vx * factor;
-                this.y += this.vy * factor;
+                const scrollFactor = 1 + scrollSpeed * 0.05;
+                this.x += this.vx * speedFactor * scrollFactor;
+                this.y += this.vy * speedFactor * scrollFactor;
 
                 if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
                 if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
@@ -93,14 +98,14 @@ async function initLandingAnimations() {
                 d.update();
                 d.draw();
             });
-            scrollSpeed *= 0.95; // Decay scroll influence
+            scrollSpeed *= 0.96; // Slightly slower decay for longer trails
             dotAnimationId = requestAnimationFrame(animateDots);
         };
         animateDots();
 
-        // Track global content scroll for dots speed
+        // Track global content scroll for dots speed (Increased impact 3x)
         content.addEventListener('scroll', () => {
-            scrollSpeed = Math.min(scrollSpeed + 2, 25);
+            scrollSpeed = Math.min(scrollSpeed + 6, 75); // Incremented from 2 -> 6 (3x)
         }, { passive: true });
     }
 
@@ -128,8 +133,8 @@ async function initLandingAnimations() {
     if (content) {
         content.addEventListener('mousemove', (e) => {
             if (!landingActive) return;
-            const x = (e.clientX / window.innerWidth - 0.5) * 60; // Was 30
-            const y = (e.clientY / window.innerHeight - 0.5) * 60; // Was 30
+            const x = (e.clientX / window.innerWidth - 0.5) * 60;
+            const y = (e.clientY / window.innerHeight - 0.5) * 60;
             
             // For particles
             mouse.x = e.clientX;
